@@ -1,0 +1,1898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Projects Dashboard API — 50h Build Roadmap (CSR Architecture)</title>
+<style>
+  :root{
+    --bg:#0f1117; --panel:#161925; --panel2:#1c2030; --text:#e6e8f0; --muted:#9aa3b8;
+    --accent:#7aa2ff; --accent2:#59d9b3; --warn:#ffb454; --danger:#ff6b6b; --code-bg:#0b0d13;
+    --border:#2a2f42;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
+  .layout{display:flex;max-width:1400px;margin:0 auto;}
+  nav#toc{position:sticky;top:0;height:100vh;overflow-y:auto;width:280px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);padding:20px 14px;}
+  nav#toc h3{color:var(--accent);font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:18px 0 6px;}
+  nav#toc a{display:block;color:var(--muted);text-decoration:none;font-size:13.5px;padding:4px 8px;border-radius:6px;margin:1px 0;}
+  nav#toc a:hover{background:var(--panel2);color:var(--text);}
+  nav#toc a.phase{color:var(--text);font-weight:600;margin-top:10px;}
+  main{padding:36px 48px;max-width:980px;}
+  h1{font-size:30px;margin-bottom:6px;}
+  h1 + p.sub{color:var(--muted);margin-top:0;}
+  h2{font-size:23px;margin-top:56px;border-bottom:2px solid var(--border);padding-bottom:10px;color:var(--accent);}
+  h2 .hours{float:right;background:var(--panel2);color:var(--accent2);font-size:13px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);}
+  h3{font-size:18px;margin-top:30px;color:var(--text);}
+  h4{font-size:15px;margin-top:22px;color:var(--accent2);text-transform:uppercase;letter-spacing:.5px;}
+  p{color:#c9cee0;}
+  .lead{background:linear-gradient(135deg,#1a1e2e,#171b28);border:1px solid var(--border);border-radius:12px;padding:22px 26px;margin:18px 0;}
+  .box{border-radius:10px;padding:16px 18px;margin:14px 0;border-left:4px solid var(--accent);background:var(--panel);}
+  .box.tip{border-color:var(--accent2);}
+  .box.warn{border-color:var(--warn);}
+  .box.git{border-color:#c792ea;}
+  .box h5{margin:0 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);}
+  code{background:var(--panel2);padding:1px 6px;border-radius:4px;font-size:13.5px;color:var(--accent2);font-family:Consolas,'Courier New',monospace;}
+  pre{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:13px;line-height:1.55;position:relative;margin:10px 0 18px;}
+  pre code{background:none;padding:0;color:#dbe2f0;}
+  pre.cmd{border-left:3px solid var(--accent);}
+  pre.cmd::before{content:"$ shell";position:absolute;top:0px;left:12px;background:var(--accent);color:#0b0d13;font-size:10px;font-weight:700;padding:1px 8px;border-radius:4px;}
+  pre.file{border-left:3px solid var(--accent2);}
+  .filename{display:inline-block;background:var(--accent2);color:#0b0d13;font-size:11px;font-weight:700;padding:2px 9px;border-radius:4px;margin-bottom:6px;font-family:Consolas,monospace;}
+  table{border-collapse:collapse;width:100%;margin:16px 0;}
+  th,td{border:1px solid var(--border);padding:8px 12px;font-size:13.5px;text-align:left;}
+  th{background:var(--panel2);color:var(--accent);}
+  tr:nth-child(even){background:#141726;}
+  ul,ol{color:#c9cee0;}
+  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:var(--panel2);color:var(--accent2);border:1px solid var(--border);margin-left:8px;}
+  hr{border:none;border-top:1px solid var(--border);margin:40px 0;}
+  .arch{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0;}
+  .arch div{flex:1;min-width:150px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;}
+  .arch div b{color:var(--accent);}
+  footer{color:var(--muted);text-align:center;padding:40px;font-size:12.5px;}
+  @media (max-width: 900px){nav#toc{display:none;} main{padding:20px;}}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav id="toc">
+  <h3>Contents</h3>
+  <a href="#approach">Approach &amp; Architecture</a>
+  <a href="#roadmap-table">Roadmap Overview (50h)</a>
+  <a class="phase" href="#phase0">Phase 0 · Planning &amp; Tooling</a>
+  <a href="#p0-1">0.1 Repo &amp; env setup</a>
+  <a href="#p0-2">0.2 Lint/format/test tooling</a>
+  <a class="phase" href="#phase1">Phase 1 · Skeleton, Docker, Postgres</a>
+  <a href="#p1-1">1.1 FastAPI hello-world</a>
+  <a href="#p1-2">1.2 Settings &amp; .env</a>
+  <a href="#p1-3">1.3 Dockerfile + docker-compose</a>
+  <a href="#p1-4">1.4 First test + CI skeleton</a>
+  <a class="phase" href="#phase2">Phase 2 · DB, Models, Repository Layer</a>
+  <a href="#p2-1">2.1 SQLAlchemy engine/session</a>
+  <a href="#p2-2">2.2 Models (User/Project/Document/Access)</a>
+  <a href="#p2-3">2.3 Alembic migrations</a>
+  <a href="#p2-4">2.4 Generic Repository base</a>
+  <a class="phase" href="#phase3">Phase 3 · Auth Vertical Slice (JWT)</a>
+  <a href="#p3-1">3.1 Pydantic schemas</a>
+  <a href="#p3-2">3.2 Security core (hash/JWT)</a>
+  <a href="#p3-3">3.3 UserRepository</a>
+  <a href="#p3-4">3.4 AuthService</a>
+  <a href="#p3-5">3.5 Router: /auth /login</a>
+  <a href="#p3-6">3.6 get_current_user dependency</a>
+  <a href="#p3-7">3.7 Tests for auth</a>
+  <a class="phase" href="#phase4">Phase 4 · Projects CRUD</a>
+  <a href="#p4-1">4.1 ProjectRepository + AccessRepository</a>
+  <a href="#p4-2">4.2 ProjectService (business rules)</a>
+  <a href="#p4-3">4.3 Permission dependency</a>
+  <a href="#p4-4">4.4 Router: /projects</a>
+  <a href="#p4-5">4.5 Tests for projects</a>
+  <a class="phase" href="#phase5">Phase 5 · Documents + S3</a>
+  <a href="#p5-1">5.1 S3 client wrapper</a>
+  <a href="#p5-2">5.2 DocumentRepository</a>
+  <a href="#p5-3">5.3 DocumentService</a>
+  <a href="#p5-4">5.4 Router: documents</a>
+  <a href="#p5-5">5.5 Tests with moto (mock S3)</a>
+  <a class="phase" href="#phase6">Phase 6 · Invite &amp; Share</a>
+  <a href="#p6-1">6.1 POST /project/&lt;id&gt;/invite</a>
+  <a href="#p6-2">6.2 GET /project/&lt;id&gt;/share (optional)</a>
+  <a class="phase" href="#phase7">Phase 7 · AWS Lambda (S3 events)</a>
+  <a href="#p7-1">7.1 Image resize Lambda</a>
+  <a href="#p7-2">7.2 Storage-size limit Lambda</a>
+  <a href="#p7-3">7.3 Unit tests for Lambda</a>
+  <a class="phase" href="#phase8">Phase 8 · CI/CD Pipeline</a>
+  <a href="#p8-1">8.1 GitHub Actions: lint+test</a>
+  <a href="#p8-2">8.2 Build &amp; push image</a>
+  <a href="#p8-3">8.3 Deploy on merge</a>
+  <a class="phase" href="#phase9">Phase 9 · Packaging &amp; Polish</a>
+  <a href="#p9-1">9.1 pyproject / tox</a>
+  <a href="#p9-2">9.2 Final docs &amp; tag v1.0.0</a>
+  <a href="#recommendations">Best Practices &amp; Recommendations</a>
+</nav>
+<main>
+
+<h1>Project Management / Profiles Dashboard API</h1>
+<p class="sub">A 50-hour, step-by-step build plan using FastAPI + PostgreSQL + S3, following the Controller–Service–Repository (three-layer) architecture.</p>
+
+<h2 id="approach">Approach &amp; Architecture <span class="badge">read first</span></h2>
+<div class="lead">
+<p>We will build this incrementally, in <b>vertical slices</b> rather than laying out the whole folder tree up front. Each phase adds one working, tested capability end-to-end (route → service → repository → DB/S3), and every phase ends with a green test suite and a git commit. This mirrors how you'd actually work on a real team: small PRs, CI green on every merge, no big-bang integration at the end.</p>
+<p>The core structural decision is the <b>Controller–Service–Repository (CSR) pattern</b>, a standard layered architecture that keeps concerns separated and testable:</p>
+<div class="arch">
+  <div><b>Controller</b><br><span style="font-size:12.5px;color:var(--muted)">FastAPI routers. Parses/validates HTTP input (Pydantic), calls a Service, returns a response. No SQL, no business rules here.</span></div>
+  <div><b>Service</b><br><span style="font-size:12.5px;color:var(--muted)">Business logic &amp; orchestration (e.g. "creating a project also grants owner access"). Talks only to Repositories and other Services, never to the DB session directly for queries.</span></div>
+  <div><b>Repository</b><br><span style="font-size:12.5px;color:var(--muted)">Data access only. One repository per aggregate (User, Project, Document, Access). Wraps SQLAlchemy queries. Swappable/testable in isolation.</span></div>
+</div>
+<p>Below that sit <b>Models</b> (SQLAlchemy ORM entities) and <b>Schemas</b> (Pydantic request/response DTOs) — kept as separate modules so the DB shape and the API shape are free to diverge (e.g. never returning <code>hashed_password</code>).</p>
+<p><b>Auth:</b> stateless JWT (1h expiry) issued at <code>POST /login</code>, verified per-request via a FastAPI dependency (<code>get_current_user</code>) that decodes the token and loads the user through the UserRepository. Authorization (owner vs participant) is a second dependency layered on top, resolved through AccessRepository.</p>
+<p><b>Storage:</b> documents go to S3 (never through the app server's disk for long-term storage — stream to S3 directly). An S3 <code>ObjectCreated</code> event triggers a Lambda that (a) resizes images if applicable and (b) recalculates the project's total storage usage and enforces a quota.</p>
+<p><b>Testing:</b> <code>pytest</code> + <code>pytest-asyncio</code> + FastAPI's <code>TestClient</code>, a disposable SQLite (or Dockerized Postgres via <code>testcontainers</code>) per test session, and <code>moto</code> to mock S3/Lambda in unit tests — no real AWS calls in CI. Coverage tracked with <code>pytest-cov</code>. Tests are added <i>with</i> every phase, not bolted on at the end.</p>
+<p><b>Tooling:</b> <code>ruff</code> (lint+format, replaces flake8/isort/black), <code>mypy</code> (type checking), <code>pre-commit</code> (git hooks), <code>pydantic-settings</code> (typed <code>.env</code> loading), <code>alembic</code> (migrations), <code>poetry</code> (dependency + packaging), <code>Docker</code>/<code>docker-compose</code> (local Postgres + app), <b>GitHub Actions</b> (lint → test → build → push → deploy on merge to <code>main</code>).</p>
+<p>Git strategy: one feature branch per phase (<code>feat/phase-1-skeleton</code>, etc.), small commits inside it, PR into <code>main</code>, CI must pass before merge. Commit messages follow <a href="https://www.conventionalcommits.org" style="color:var(--accent2)">Conventional Commits</a> (<code>feat:</code>, <code>fix:</code>, <code>test:</code>, <code>chore:</code>, <code>ci:</code>).</p>
+</div>
+
+<h2 id="roadmap-table">Roadmap Overview <span class="hours">50h total</span></h2>
+<table>
+<tr><th>Phase</th><th>Topic</th><th>Hours</th><th>Deliverable</th></tr>
+<tr><td>0</td><td>Planning &amp; tooling setup</td><td>2.5h</td><td>Repo, poetry, lint/format/pre-commit configured</td></tr>
+<tr><td>1</td><td>Skeleton, Docker, Postgres</td><td>4.5h</td><td>App boots in Docker, hits Postgres, CI runs one test</td></tr>
+<tr><td>2</td><td>DB models + Repository layer</td><td>6h</td><td>Alembic migrations, 4 models, generic repo base</td></tr>
+<tr><td>3</td><td>Auth vertical slice (JWT)</td><td>7h</td><td><code>POST /auth</code>, <code>POST /login</code>, protected routes</td></tr>
+<tr><td>4</td><td>Projects CRUD</td><td>9h</td><td>All <code>/projects</code> &amp; <code>/project/&lt;id&gt;</code> endpoints, ownership rules</td></tr>
+<tr><td>5</td><td>Documents + S3</td><td>8h</td><td>Upload/download/update/delete docs via S3</td></tr>
+<tr><td>6</td><td>Invite &amp; share</td><td>4h</td><td><code>/invite</code>, optional <code>/share</code> email-link flow</td></tr>
+<tr><td>7</td><td>AWS Lambda (S3 events)</td><td>4h</td><td>Resize + storage-quota Lambdas, unit-tested</td></tr>
+<tr><td>8</td><td>CI/CD pipeline</td><td>3h</td><td>Full GitHub Actions: lint→test→build→push→deploy</td></tr>
+<tr><td>9</td><td>Packaging &amp; polish</td><td>2h</td><td>pyproject/tox, README, tagged v1.0.0</td></tr>
+</table>
+
+<hr>
+
+<h2 id="phase0">Phase 0 — Planning &amp; Tooling <span class="hours">~2.5h</span></h2>
+
+<h3 id="p0-1">0.1 Repository &amp; environment setup <span class="badge">30 min</span></h3>
+<p>Create the repo on GitHub first (empty, with a Python <code>.gitignore</code> and MIT/your license), then clone locally.</p>
+<pre class="cmd"><code>git clone git@github.com:&lt;you&gt;/projects-dashboard-api.git
+cd projects-dashboard-api
+python3.13 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip poetry
+poetry init --name projects-dashboard-api --python "^3.13" -n
+poetry add fastapi "uvicorn[standard]" pydantic-settings sqlalchemy psycopg2-binary alembic \
+           passlib[bcrypt] "python-jose[cryptography]" python-multipart boto3
+poetry add --group dev pytest pytest-asyncio pytest-cov httpx ruff mypy pre-commit moto Faker</code></pre>
+<div class="box tip"><h5>Why poetry</h5>Locks dependencies (<code>poetry.lock</code>), gives us <code>pyproject.toml</code> for free (needed later for packaging in Phase 9), and separates dev vs runtime deps cleanly.</div>
+
+<h3 id="p0-2">0.2 Lint, format, type-check, pre-commit <span class="badge">1h</span></h3>
+<div class="filename">pyproject.toml (append)</div>
+<pre class="file"><code>[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+addopts = "-ra -q --cov=app --cov-report=term-missing"
+testpaths = ["tests"]
+asyncio_mode = "auto"</code></pre>
+<div class="filename">.pre-commit-config.yaml</div>
+<pre class="file"><code>repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        additional_dependencies: [pydantic]</code></pre>
+<pre class="cmd"><code>pre-commit install
+git add pyproject.toml poetry.lock .pre-commit-config.yaml .gitignore
+git commit -m "chore: bootstrap poetry project, ruff/mypy/pre-commit config"
+git push -u origin main</code></pre>
+<div class="box git"><h5>Git checkpoint</h5>First commit is pure tooling — nothing to break, safe baseline for CI in the next phase.</div>
+
+<hr>
+
+<h2 id="phase1">Phase 1 — Skeleton, Docker &amp; Postgres <span class="hours">~4.5h</span></h2>
+<p>Branch: <code>git checkout -b feat/phase-1-skeleton</code></p>
+
+<h3 id="p1-1">1.1 Minimal FastAPI app <span class="badge">30 min</span></h3>
+<p>Start with the absolute minimum — one file, one route — to prove the stack boots before adding any layers.</p>
+<pre class="cmd"><code>mkdir -p app
+touch app/__init__.py</code></pre>
+<div class="filename">app/main.py</div>
+<pre class="file"><code>from fastapi import FastAPI
+
+app = FastAPI(title="Projects Dashboard API", version="0.1.0")
+
+
+@app.get("/health", tags=["system"])
+def health_check() -> dict[str, str]:
+    return {"status": "ok"}</code></pre>
+<pre class="cmd"><code>uvicorn app.main:app --reload
+# visit http://127.0.0.1:8000/docs</code></pre>
+
+<h3 id="p1-2">1.2 Typed settings + .env <span class="badge">45 min</span></h3>
+<p>Never read <code>os.environ</code> directly — centralize config in one typed object so missing/misspelled env vars fail fast at startup, not mid-request.</p>
+<pre class="cmd"><code>mkdir -p app/core</code></pre>
+<div class="filename">app/core/config.py</div>
+<pre class="file"><code>from functools import lru_cache
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
+    # App
+    ENV: str = "local"
+    SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 60
+
+    # Database
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
+    POSTGRES_HOST: str = "db"
+    POSTGRES_PORT: int = 5432
+
+    @property
+    def DATABASE_URL(self) -> str:
+        return (
+            f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
+
+    # AWS / S3
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    AWS_REGION: str = "eu-central-1"
+    S3_BUCKET_NAME: str = "projects-dashboard-docs"
+    S3_ENDPOINT_URL: str | None = None  # set for local MinIO/moto testing
+
+    # Limits
+    MAX_PROJECT_STORAGE_MB: int = 500
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()  # type: ignore[call-arg]</code></pre>
+<div class="filename">.env.example <span style="color:#9aa3b8;font-weight:400;">(commit this; never commit .env)</span></div>
+<pre class="file"><code>ENV=local
+SECRET_KEY=change-me-to-a-long-random-string
+JWT_ALGORITHM=HS256
+JWT_EXPIRE_MINUTES=60
+
+POSTGRES_USER=app
+POSTGRES_PASSWORD=app
+POSTGRES_DB=projects_dashboard
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=eu-central-1
+S3_BUCKET_NAME=projects-dashboard-docs
+
+MAX_PROJECT_STORAGE_MB=500</code></pre>
+<pre class="cmd"><code>cp .env.example .env         # fill in real local values, this file is gitignored
+echo ".env" >> .gitignore</code></pre>
+<div class="box warn"><h5>Secret handling</h5>In CI/production, <code>.env</code> is never uploaded — <code>SECRET_KEY</code> and AWS creds are injected as GitHub Actions <b>Secrets</b> / cloud provider secret manager env vars. <code>pydantic-settings</code> reads real env vars the same way it reads <code>.env</code>, so no code changes needed between environments.</div>
+
+<h3 id="p1-3">1.3 Dockerfile + docker-compose (app + Postgres) <span class="badge">1.5h</span></h3>
+<div class="filename">Dockerfile</div>
+<pre class="file"><code>FROM python:3.13-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    POETRY_VIRTUALENVS_CREATE=false
+
+WORKDIR /code
+
+RUN pip install --no-cache-dir poetry==1.8.3
+COPY pyproject.toml poetry.lock ./
+RUN poetry install --no-root --only main
+
+COPY app ./app
+COPY alembic ./alembic
+COPY alembic.ini ./
+
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]</code></pre>
+<div class="filename">docker-compose.yml</div>
+<pre class="file"><code>services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/code/app   # live-reload in dev
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgdata:</code></pre>
+<pre class="cmd"><code>docker compose up --build
+curl http://localhost:8000/health</code></pre>
+
+<h3 id="p1-4">1.4 First test + CI skeleton <span class="badge">45 min</span></h3>
+<pre class="cmd"><code>mkdir tests
+touch tests/__init__.py</code></pre>
+<div class="filename">tests/test_health.py</div>
+<pre class="file"><code>from fastapi.testclient import TestClient
+
+from app.main import app
+
+client = TestClient(app)
+
+
+def test_health_check() -> None:
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}</code></pre>
+<div class="filename">.github/workflows/ci.yml <span style="color:#9aa3b8;font-weight:400;">(grows in Phase 8, minimal for now)</span></div>
+<pre class="file"><code>name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: projects_dashboard_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U app" --health-interval 5s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install poetry && poetry install
+      - name: Lint
+        run: poetry run ruff check . && poetry run ruff format --check .
+      - name: Type check
+        run: poetry run mypy app
+      - name: Test
+        env:
+          SECRET_KEY: test-secret
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: projects_dashboard_test
+          POSTGRES_HOST: localhost
+        run: poetry run pytest</code></pre>
+<pre class="cmd"><code>git add app tests Dockerfile docker-compose.yml .github .env.example
+git commit -m "feat: FastAPI skeleton, typed settings, Docker(-compose), initial CI"
+git push -u origin feat/phase-1-skeleton
+# open PR -> wait for CI green -> squash-merge to main</code></pre>
+<div class="box git"><h5>GitHub settings to enable now</h5>Repo Settings → Branches → add a protection rule on <code>main</code>: require PR before merge, require the <code>lint-and-test</code> status check to pass, require branches up to date.</div>
+
+<hr>
+
+<h2 id="phase2">Phase 2 — DB, Models &amp; Repository Layer <span class="hours">~6h</span></h2>
+<p>Branch: <code>feat/phase-2-db-layer</code></p>
+
+<h3 id="p2-1">2.1 SQLAlchemy engine &amp; session <span class="badge">45 min</span></h3>
+<pre class="cmd"><code>mkdir -p app/db app/models</code></pre>
+<div class="filename">app/db/base.py</div>
+<pre class="file"><code>from sqlalchemy.orm import DeclarativeBase
+
+
+class Base(DeclarativeBase):
+    """Shared declarative base for all ORM models."""</code></pre>
+<div class="filename">app/db/session.py</div>
+<pre class="file"><code>from collections.abc import Generator
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.core.config import get_settings
+
+settings = get_settings()
+
+engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True, future=True)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+
+
+def get_db() -> Generator[Session, None, None]:
+    """FastAPI dependency: yields a DB session, always closed after the request."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()</code></pre>
+
+<h3 id="p2-2">2.2 Models: User, Project, Document, ProjectAccess <span class="badge">2h</span></h3>
+<p>Four entities. <code>ProjectAccess</code> is the join table that also carries the <b>role</b> (owner/participant) — this is the normalized design; Phase 9's optional task revisits denormalizing a read-optimized view on top of it.</p>
+<div class="filename">app/models/user.py</div>
+<pre class="file"><code>import uuid
+from datetime import datetime
+
+from sqlalchemy import DateTime, String, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.base import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    login: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    accesses: Mapped[list["ProjectAccess"]] = relationship(back_populates="user")</code></pre>
+<div class="filename">app/models/project.py</div>
+<pre class="file"><code>import uuid
+from datetime import datetime
+
+from sqlalchemy import DateTime, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.base import Base
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    accesses: Mapped[list["ProjectAccess"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
+    documents: Mapped[list["Document"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )</code></pre>
+<div class="filename">app/models/access.py</div>
+<pre class="file"><code>import enum
+import uuid
+
+from sqlalchemy import Enum, ForeignKey, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.base import Base
+
+
+class Role(str, enum.Enum):
+    OWNER = "owner"
+    PARTICIPANT = "participant"
+
+
+class ProjectAccess(Base):
+    __tablename__ = "project_access"
+    __table_args__ = (UniqueConstraint("user_id", "project_id", name="uq_user_project"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    role: Mapped[Role] = mapped_column(Enum(Role), default=Role.PARTICIPANT)
+
+    user: Mapped["User"] = relationship(back_populates="accesses")
+    project: Mapped["Project"] = relationship(back_populates="accesses")</code></pre>
+<div class="filename">app/models/document.py</div>
+<pre class="file"><code>import uuid
+from datetime import datetime
+
+from sqlalchemy import BigInteger, DateTime, ForeignKey, String, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.base import Base
+
+
+class Document(Base):
+    __tablename__ = "documents"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    s3_key: Mapped[str] = mapped_column(String(512), nullable=False, unique=True)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    project: Mapped["Project"] = relationship(back_populates="documents")</code></pre>
+<pre class="cmd"><code>mkdir -p app/models && touch app/models/__init__.py</code></pre>
+<div class="filename">app/models/__init__.py</div>
+<pre class="file"><code>from app.models.access import ProjectAccess, Role  # noqa: F401
+from app.models.document import Document  # noqa: F401
+from app.models.project import Project  # noqa: F401
+from app.models.user import User  # noqa: F401</code></pre>
+
+<h3 id="p2-3">2.3 Alembic migrations <span class="badge">1h</span></h3>
+<pre class="cmd"><code>poetry run alembic init alembic</code></pre>
+<div class="filename">alembic.ini <span style="color:#9aa3b8;font-weight:400;">(edit one line)</span></div>
+<pre class="file"><code>sqlalchemy.url = driver://user:pass@localhost/dbname   # overridden in env.py, leave placeholder</code></pre>
+<div class="filename">alembic/env.py <span style="color:#9aa3b8;font-weight:400;">(key edits)</span></div>
+<pre class="file"><code>from app.core.config import get_settings
+from app.db.base import Base
+import app.models  # noqa: F401  -- ensures all models are registered on Base.metadata
+
+config.set_main_option("sqlalchemy.url", get_settings().DATABASE_URL)
+target_metadata = Base.metadata</code></pre>
+<pre class="cmd"><code>poetry run alembic revision --autogenerate -m "create users, projects, documents, project_access"
+poetry run alembic upgrade head</code></pre>
+<div class="box tip"><h5>Recommendation</h5>Always review the autogenerated migration file before applying it — Alembic autogenerate misses some things (e.g. enum type changes, some renames). Commit the generated migration file itself, never regenerate it in place later.</div>
+
+<h3 id="p2-4">2.4 Generic Repository base <span class="badge">1.5h</span></h3>
+<p>The Repository layer is deliberately generic where it can be, and specialized where the query is domain-specific (e.g. "projects a user has access to").</p>
+<pre class="cmd"><code>mkdir -p app/repositories</code></pre>
+<div class="filename">app/repositories/base.py</div>
+<pre class="file"><code>import uuid
+from typing import Generic, TypeVar
+
+from sqlalchemy.orm import Session
+
+from app.db.base import Base
+
+ModelType = TypeVar("ModelType", bound=Base)
+
+
+class BaseRepository(Generic[ModelType]):
+    """Generic CRUD operations, reused by every concrete repository."""
+
+    def __init__(self, model: type[ModelType], db: Session) -> None:
+        self.model = model
+        self.db = db
+
+    def get(self, id_: uuid.UUID) -> ModelType | None:
+        return self.db.get(self.model, id_)
+
+    def add(self, instance: ModelType) -> ModelType:
+        self.db.add(instance)
+        self.db.commit()
+        self.db.refresh(instance)
+        return instance
+
+    def delete(self, instance: ModelType) -> None:
+        self.db.delete(instance)
+        self.db.commit()</code></pre>
+<h4>Tests for this phase</h4>
+<div class="filename">tests/conftest.py</div>
+<pre class="file"><code>import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.db.base import Base
+import app.models  # noqa: F401
+
+
+@pytest.fixture()
+def db_session() -> Session:
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    Base.metadata.create_all(engine)
+    TestingSession = sessionmaker(bind=engine)
+    session = TestingSession()
+    try:
+        yield session
+    finally:
+        session.close()</code></pre>
+<div class="filename">tests/test_repositories.py</div>
+<pre class="file"><code>from app.models.user import User
+from app.repositories.base import BaseRepository
+
+
+def test_base_repository_add_and_get(db_session) -> None:
+    repo = BaseRepository(User, db_session)
+    user = User(login="alice", hashed_password="x")
+    saved = repo.add(user)
+
+    fetched = repo.get(saved.id)
+    assert fetched is not None
+    assert fetched.login == "alice"</code></pre>
+<div class="box warn"><h5>Why SQLite in-memory here, Postgres in CI/prod</h5>Fast, dependency-free unit tests for repository logic. Anything relying on Postgres-only features (e.g. certain constraints) gets a separate integration test marked <code>@pytest.mark.integration</code> that runs against the CI Postgres service.</div>
+<pre class="cmd"><code>poetry run pytest
+git add app/db app/models alembic alembic.ini app/repositories tests
+git commit -m "feat: SQLAlchemy models, alembic migrations, generic repository base"
+git push -u origin feat/phase-2-db-layer   # PR -> CI -> merge</code></pre>
+
+<hr>
+
+<h2 id="phase3">Phase 3 — Auth Vertical Slice (JWT) <span class="hours">~7h</span></h2>
+<p>Branch: <code>feat/phase-3-auth</code>. This is the first full Controller→Service→Repository slice.</p>
+
+<h3 id="p3-1">3.1 Pydantic schemas <span class="badge">45 min</span></h3>
+<pre class="cmd"><code>mkdir -p app/schemas</code></pre>
+<div class="filename">app/schemas/user.py</div>
+<pre class="file"><code>import uuid
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class UserCreate(BaseModel):
+    login: str = Field(min_length=3, max_length=64)
+    password: str = Field(min_length=8, max_length=128)
+    repeat_password: str
+
+    @model_validator(mode="after")
+    def passwords_match(self) -> "UserCreate":
+        if self.password != self.repeat_password:
+            raise ValueError("password and repeat_password do not match")
+        return self
+
+
+class UserLogin(BaseModel):
+    login: str
+    password: str
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    login: str</code></pre>
+<div class="filename">app/schemas/token.py</div>
+<pre class="file"><code>from pydantic import BaseModel
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class TokenPayload(BaseModel):
+    sub: str          # user id
+    exp: int</code></pre>
+
+<h3 id="p3-2">3.2 Security core: hashing + JWT <span class="badge">1h</span></h3>
+<div class="filename">app/core/security.py</div>
+<pre class="file"><code>import uuid
+from datetime import datetime, timedelta, timezone
+
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+
+from app.core.config import get_settings
+
+settings = get_settings()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(plain: str) -> str:
+    return pwd_context.hash(plain)
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
+
+
+def create_access_token(user_id: uuid.UUID) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
+    payload = {"sub": str(user_id), "exp": expire}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_access_token(token: str) -> uuid.UUID | None:
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        return uuid.UUID(payload["sub"])
+    except (JWTError, KeyError, ValueError):
+        return None</code></pre>
+
+<h3 id="p3-3">3.3 UserRepository <span class="badge">30 min</span></h3>
+<div class="filename">app/repositories/user_repository.py</div>
+<pre class="file"><code>from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models.user import User
+from app.repositories.base import BaseRepository
+
+
+class UserRepository(BaseRepository[User]):
+    def __init__(self, db: Session) -> None:
+        super().__init__(User, db)
+
+    def get_by_login(self, login: str) -> User | None:
+        stmt = select(User).where(User.login == login)
+        return self.db.execute(stmt).scalar_one_or_none()</code></pre>
+
+<h3 id="p3-4">3.4 AuthService (business rules) <span class="badge">1h</span></h3>
+<pre class="cmd"><code>mkdir -p app/services app/api/routers app/exceptions
+touch app/api/__init__.py app/api/routers/__init__.py</code></pre>
+<div class="filename">app/exceptions.py</div>
+<pre class="file"><code>class AppError(Exception):
+    """Base class for domain errors, translated to HTTP in the router layer."""
+
+
+class UserAlreadyExistsError(AppError):
+    pass
+
+
+class InvalidCredentialsError(AppError):
+    pass
+
+
+class NotFoundError(AppError):
+    pass
+
+
+class PermissionDeniedError(AppError):
+    pass</code></pre>
+<div class="filename">app/services/auth_service.py</div>
+<pre class="file"><code>from sqlalchemy.orm import Session
+
+from app.core.security import create_access_token, hash_password, verify_password
+from app.exceptions import InvalidCredentialsError, UserAlreadyExistsError
+from app.models.user import User
+from app.repositories.user_repository import UserRepository
+from app.schemas.user import UserCreate, UserLogin
+
+
+class AuthService:
+    def __init__(self, db: Session) -> None:
+        self.users = UserRepository(db)
+
+    def register(self, payload: UserCreate) -> User:
+        if self.users.get_by_login(payload.login):
+            raise UserAlreadyExistsError(f"login '{payload.login}' is already taken")
+        user = User(login=payload.login, hashed_password=hash_password(payload.password))
+        return self.users.add(user)
+
+    def login(self, payload: UserLogin) -> str:
+        user = self.users.get_by_login(payload.login)
+        if not user or not verify_password(payload.password, user.hashed_password):
+            raise InvalidCredentialsError("invalid login or password")
+        return create_access_token(user.id)</code></pre>
+<p>Notice the service raises plain Python exceptions, not HTTP exceptions — it has no knowledge of FastAPI. The router translates domain errors to status codes. This keeps the service layer reusable (e.g. from a CLI or a background worker) and unit-testable without spinning up HTTP.</p>
+
+<h3 id="p3-5">3.5 Router: POST /auth, POST /login <span class="badge">1h</span></h3>
+<div class="filename">app/api/deps.py</div>
+<pre class="file"><code>from collections.abc import Generator
+
+from app.db.session import get_db as _get_db  # re-exported for a single import surface
+
+get_db = _get_db  # noqa: E731 (kept as a plain alias for clarity in router signatures)</code></pre>
+<div class="filename">app/api/routers/auth.py</div>
+<pre class="file"><code>from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_db
+from app.exceptions import InvalidCredentialsError, UserAlreadyExistsError
+from app.schemas.token import Token
+from app.schemas.user import UserCreate, UserLogin, UserOut
+from app.services.auth_service import AuthService
+
+router = APIRouter(tags=["auth"])
+
+
+@router.post("/auth", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> UserOut:
+    service = AuthService(db)
+    try:
+        user = service.register(payload)
+    except UserAlreadyExistsError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return UserOut.model_validate(user)
+
+
+@router.post("/login", response_model=Token)
+def login(payload: UserLogin, db: Session = Depends(get_db)) -> Token:
+    service = AuthService(db)
+    try:
+        token = service.login(payload)
+    except InvalidCredentialsError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+    return Token(access_token=token)</code></pre>
+<div class="filename">app/main.py <span style="color:#9aa3b8;font-weight:400;">(updated)</span></div>
+<pre class="file"><code>from fastapi import FastAPI
+
+from app.api.routers import auth
+
+app = FastAPI(title="Projects Dashboard API", version="0.1.0")
+
+app.include_router(auth.router)
+
+
+@app.get("/health", tags=["system"])
+def health_check() -> dict[str, str]:
+    return {"status": "ok"}</code></pre>
+
+<h3 id="p3-6">3.6 get_current_user dependency <span class="badge">45 min</span></h3>
+<div class="filename">app/api/deps.py <span style="color:#9aa3b8;font-weight:400;">(extended)</span></div>
+<pre class="file"><code>from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+
+from app.core.security import decode_access_token
+from app.db.session import get_db
+from app.models.user import User
+from app.repositories.user_repository import UserRepository
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+) -> User:
+    credentials_error = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    user_id = decode_access_token(token)
+    if user_id is None:
+        raise credentials_error
+    user = UserRepository(db).get(user_id)
+    if user is None:
+        raise credentials_error
+    return user</code></pre>
+
+<h3 id="p3-7">3.7 Tests for auth <span class="badge">2.5h</span></h3>
+<div class="filename">tests/conftest.py <span style="color:#9aa3b8;font-weight:400;">(add app client fixture, overriding get_db)</span></div>
+<pre class="file"><code># ... keep db_session fixture from Phase 2, add:
+import pytest
+from fastapi.testclient import TestClient
+
+from app.api.deps import get_db
+from app.main import app
+
+
+@pytest.fixture()
+def client(db_session) -> TestClient:
+    def _override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = _override_get_db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()</code></pre>
+<div class="filename">tests/test_auth.py</div>
+<pre class="file"><code>def test_register_and_login_success(client) -> None:
+    resp = client.post(
+        "/auth",
+        json={"login": "alice", "password": "supersecret", "repeat_password": "supersecret"},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["login"] == "alice"
+
+    resp = client.post("/login", json={"login": "alice", "password": "supersecret"})
+    assert resp.status_code == 200
+    assert "access_token" in resp.json()
+
+
+def test_register_duplicate_login_returns_409(client) -> None:
+    payload = {"login": "bob", "password": "supersecret", "repeat_password": "supersecret"}
+    client.post("/auth", json=payload)
+    resp = client.post("/auth", json=payload)
+    assert resp.status_code == 409
+
+
+def test_login_wrong_password_returns_401(client) -> None:
+    client.post(
+        "/auth",
+        json={"login": "carol", "password": "supersecret", "repeat_password": "supersecret"},
+    )
+    resp = client.post("/login", json={"login": "carol", "password": "wrong"})
+    assert resp.status_code == 401
+
+
+def test_password_mismatch_returns_422(client) -> None:
+    resp = client.post(
+        "/auth", json={"login": "dave", "password": "abcdefgh", "repeat_password": "different"}
+    )
+    assert resp.status_code == 422</code></pre>
+<div class="filename">tests/test_security.py <span style="color:#9aa3b8;font-weight:400;">(unit tests, no HTTP)</span></div>
+<pre class="file"><code>import uuid
+
+from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
+
+
+def test_password_hash_roundtrip() -> None:
+    hashed = hash_password("mypassword")
+    assert hashed != "mypassword"
+    assert verify_password("mypassword", hashed)
+    assert not verify_password("wrong", hashed)
+
+
+def test_jwt_roundtrip() -> None:
+    user_id = uuid.uuid4()
+    token = create_access_token(user_id)
+    assert decode_access_token(token) == user_id
+
+
+def test_jwt_invalid_token_returns_none() -> None:
+    assert decode_access_token("not-a-real-token") is None</code></pre>
+<pre class="cmd"><code>poetry run pytest
+git add app tests
+git commit -m "feat: JWT auth (register/login), get_current_user dependency, tests"
+git push -u origin feat/phase-3-auth   # PR -> CI -> merge</code></pre>
+
+<hr>
+
+<h2 id="phase4">Phase 4 — Projects CRUD <span class="hours">~9h</span></h2>
+<p>Branch: <code>feat/phase-4-projects</code>. This is the largest slice: ownership rules, list-with-access filtering, cascade delete.</p>
+
+<h3 id="p4-1">4.1 ProjectRepository + AccessRepository <span class="badge">1.5h</span></h3>
+<div class="filename">app/repositories/access_repository.py</div>
+<pre class="file"><code>import uuid
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models.access import ProjectAccess, Role
+from app.repositories.base import BaseRepository
+
+
+class AccessRepository(BaseRepository[ProjectAccess]):
+    def __init__(self, db: Session) -> None:
+        super().__init__(ProjectAccess, db)
+
+    def get_for_user_and_project(
+        self, user_id: uuid.UUID, project_id: uuid.UUID
+    ) -> ProjectAccess | None:
+        stmt = select(ProjectAccess).where(
+            ProjectAccess.user_id == user_id, ProjectAccess.project_id == project_id
+        )
+        return self.db.execute(stmt).scalar_one_or_none()
+
+    def grant(self, user_id: uuid.UUID, project_id: uuid.UUID, role: Role) -> ProjectAccess:
+        return self.add(ProjectAccess(user_id=user_id, project_id=project_id, role=role))</code></pre>
+<div class="filename">app/repositories/project_repository.py</div>
+<pre class="file"><code>import uuid
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models.access import ProjectAccess
+from app.models.project import Project
+from app.repositories.base import BaseRepository
+
+
+class ProjectRepository(BaseRepository[Project]):
+    def __init__(self, db: Session) -> None:
+        super().__init__(Project, db)
+
+    def list_for_user(self, user_id: uuid.UUID) -> list[Project]:
+        stmt = (
+            select(Project)
+            .join(ProjectAccess, ProjectAccess.project_id == Project.id)
+            .where(ProjectAccess.user_id == user_id)
+        )
+        return list(self.db.execute(stmt).scalars().all())</code></pre>
+
+<h3 id="p4-2">4.2 ProjectService <span class="badge">2h</span></h3>
+<div class="filename">app/schemas/project.py</div>
+<pre class="file"><code>import uuid
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ProjectCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    description: str = ""
+
+
+class ProjectUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+
+
+class ProjectInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    name: str
+    description: str
+    created_at: datetime
+    updated_at: datetime</code></pre>
+<div class="filename">app/services/project_service.py</div>
+<pre class="file"><code>import uuid
+
+from sqlalchemy.orm import Session
+
+from app.exceptions import NotFoundError, PermissionDeniedError
+from app.models.access import Role
+from app.models.project import Project
+from app.repositories.access_repository import AccessRepository
+from app.repositories.project_repository import ProjectRepository
+from app.schemas.project import ProjectCreate, ProjectUpdate
+
+
+class ProjectService:
+    def __init__(self, db: Session) -> None:
+        self.db = db
+        self.projects = ProjectRepository(db)
+        self.access = AccessRepository(db)
+
+    def create(self, owner_id: uuid.UUID, payload: ProjectCreate) -> Project:
+        project = self.projects.add(Project(name=payload.name, description=payload.description))
+        # business rule: creator automatically becomes owner
+        self.access.grant(owner_id, project.id, Role.OWNER)
+        return project
+
+    def list_for_user(self, user_id: uuid.UUID) -> list[Project]:
+        return self.projects.list_for_user(user_id)
+
+    def get_if_authorized(self, user_id: uuid.UUID, project_id: uuid.UUID) -> Project:
+        project = self.projects.get(project_id)
+        if project is None:
+            raise NotFoundError("project not found")
+        if self.access.get_for_user_and_project(user_id, project_id) is None:
+            raise PermissionDeniedError("no access to this project")
+        return project
+
+    def update(self, user_id: uuid.UUID, project_id: uuid.UUID, payload: ProjectUpdate) -> Project:
+        project = self.get_if_authorized(user_id, project_id)  # any role may update, per spec
+        if payload.name is not None:
+            project.name = payload.name
+        if payload.description is not None:
+            project.description = payload.description
+        self.db.commit()
+        self.db.refresh(project)
+        return project
+
+    def delete(self, user_id: uuid.UUID, project_id: uuid.UUID) -> None:
+        project = self.projects.get(project_id)
+        if project is None:
+            raise NotFoundError("project not found")
+        access = self.access.get_for_user_and_project(user_id, project_id)
+        if access is None or access.role != Role.OWNER:
+            raise PermissionDeniedError("only the owner can delete this project")
+        self.projects.delete(project)  # cascade removes access rows + documents rows (S3 cleanup in service below)</code></pre>
+<div class="box warn"><h5>Note on document deletion</h5>The DB cascade removes <code>documents</code> rows, but S3 objects are <i>not</i> deleted by a DB cascade. In Phase 5 we'll wire <code>DocumentService.delete_all_for_project</code> into this flow before the DB delete, so S3 objects are actually removed too.</div>
+
+<h3 id="p4-3">4.3 Permission dependency <span class="badge">1h</span></h3>
+<div class="filename">app/api/deps.py <span style="color:#9aa3b8;font-weight:400;">(add)</span></div>
+<pre class="file"><code>import uuid
+
+from fastapi import Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.models.access import ProjectAccess, Role
+from app.models.user import User
+from app.repositories.access_repository import AccessRepository
+
+
+def require_project_access(project_id: uuid.UUID, current_user: User = Depends(get_current_user),
+                            db: Session = Depends(get_db)) -> ProjectAccess:
+    access = AccessRepository(db).get_for_user_and_project(current_user.id, project_id)
+    if access is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="no access to this project")
+    return access
+
+
+def require_project_owner(access: ProjectAccess = Depends(require_project_access)) -> ProjectAccess:
+    if access.role != Role.OWNER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="owner permission required")
+    return access</code></pre>
+
+<h3 id="p4-4">4.4 Router: /projects <span class="badge">2h</span></h3>
+<div class="filename">app/api/routers/projects.py</div>
+<pre class="file"><code>import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_current_user, get_db, require_project_owner
+from app.exceptions import NotFoundError, PermissionDeniedError
+from app.models.user import User
+from app.schemas.project import ProjectCreate, ProjectInfo, ProjectUpdate
+from app.services.project_service import ProjectService
+
+router = APIRouter(tags=["projects"])
+
+
+@router.post("/projects", response_model=ProjectInfo, status_code=status.HTTP_201_CREATED)
+def create_project(
+    payload: ProjectCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProjectInfo:
+    project = ProjectService(db).create(current_user.id, payload)
+    return ProjectInfo.model_validate(project)
+
+
+@router.get("/projects", response_model=list[ProjectInfo])
+def list_projects(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> list[ProjectInfo]:
+    projects = ProjectService(db).list_for_user(current_user.id)
+    return [ProjectInfo.model_validate(p) for p in projects]
+
+
+@router.get("/project/{project_id}/info", response_model=ProjectInfo)
+def get_project_info(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProjectInfo:
+    try:
+        project = ProjectService(db).get_if_authorized(current_user.id, project_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionDeniedError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    return ProjectInfo.model_validate(project)
+
+
+@router.put("/project/{project_id}/info", response_model=ProjectInfo)
+def update_project_info(
+    project_id: uuid.UUID,
+    payload: ProjectUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProjectInfo:
+    try:
+        project = ProjectService(db).update(current_user.id, project_id, payload)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionDeniedError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    return ProjectInfo.model_validate(project)
+
+
+@router.delete("/project/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    try:
+        ProjectService(db).delete(current_user.id, project_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionDeniedError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc</code></pre>
+<pre class="cmd"><code># app/main.py: add
+# app.include_router(projects.router)</code></pre>
+
+<h3 id="p4-5">4.5 Tests for projects <span class="badge">2.5h</span></h3>
+<div class="filename">tests/conftest.py <span style="color:#9aa3b8;font-weight:400;">(add helper fixture)</span></div>
+<pre class="file"><code>@pytest.fixture()
+def auth_headers(client):
+    def _make(login: str = "owner") -> dict[str, str]:
+        client.post("/auth", json={"login": login, "password": "supersecret", "repeat_password": "supersecret"})
+        resp = client.post("/login", json={"login": login, "password": "supersecret"})
+        token = resp.json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}
+    return _make</code></pre>
+<div class="filename">tests/test_projects.py</div>
+<pre class="file"><code>def test_create_project_grants_owner_access(client, auth_headers) -> None:
+    headers = auth_headers("owner1")
+    resp = client.post("/projects", json={"name": "Alpha", "description": "first project"}, headers=headers)
+    assert resp.status_code == 201
+    project_id = resp.json()["id"]
+
+    resp = client.get("/projects", headers=headers)
+    assert resp.status_code == 200
+    assert any(p["id"] == project_id for p in resp.json())
+
+
+def test_non_member_cannot_read_project(client, auth_headers) -> None:
+    owner_headers = auth_headers("owner2")
+    other_headers = auth_headers("stranger")
+    resp = client.post("/projects", json={"name": "Beta"}, headers=owner_headers)
+    project_id = resp.json()["id"]
+
+    resp = client.get(f"/project/{project_id}/info", headers=other_headers)
+    assert resp.status_code == 403
+
+
+def test_only_owner_can_delete(client, auth_headers) -> None:
+    owner_headers = auth_headers("owner3")
+    resp = client.post("/projects", json={"name": "Gamma"}, headers=owner_headers)
+    project_id = resp.json()["id"]
+
+    resp = client.delete(f"/project/{project_id}", headers=owner_headers)
+    assert resp.status_code == 204
+
+    resp = client.get(f"/project/{project_id}/info", headers=owner_headers)
+    assert resp.status_code == 404
+
+
+def test_update_project_info(client, auth_headers) -> None:
+    headers = auth_headers("owner4")
+    resp = client.post("/projects", json={"name": "Delta"}, headers=headers)
+    project_id = resp.json()["id"]
+
+    resp = client.put(f"/project/{project_id}/info", json={"description": "updated"}, headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["description"] == "updated"</code></pre>
+<pre class="cmd"><code>poetry run pytest
+git add app tests
+git commit -m "feat: projects CRUD, ownership rules, access dependency, tests"
+git push -u origin feat/phase-4-projects   # PR -> CI -> merge</code></pre>
+
+<hr>
+
+<h2 id="phase5">Phase 5 — Documents + S3 <span class="hours">~8h</span></h2>
+<p>Branch: <code>feat/phase-5-documents</code></p>
+
+<h3 id="p5-1">5.1 S3 client wrapper <span class="badge">1h</span></h3>
+<div class="filename">app/core/s3.py</div>
+<pre class="file"><code>import boto3
+
+from app.core.config import get_settings
+
+settings = get_settings()
+
+
+def get_s3_client():
+    return boto3.client(
+        "s3",
+        region_name=settings.AWS_REGION,
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID or None,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY or None,
+        endpoint_url=settings.S3_ENDPOINT_URL,  # None in prod; set for local/moto testing
+    )</code></pre>
+
+<h3 id="p5-2">5.2 DocumentRepository <span class="badge">45 min</span></h3>
+<div class="filename">app/repositories/document_repository.py</div>
+<pre class="file"><code>import uuid
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.models.document import Document
+from app.repositories.base import BaseRepository
+
+
+class DocumentRepository(BaseRepository[Document]):
+    def __init__(self, db: Session) -> None:
+        super().__init__(Document, db)
+
+    def list_for_project(self, project_id: uuid.UUID) -> list[Document]:
+        stmt = select(Document).where(Document.project_id == project_id)
+        return list(self.db.execute(stmt).scalars().all())
+
+    def total_size_for_project(self, project_id: uuid.UUID) -> int:
+        stmt = select(func.coalesce(func.sum(Document.size_bytes), 0)).where(
+            Document.project_id == project_id
+        )
+        return int(self.db.execute(stmt).scalar_one())</code></pre>
+
+<h3 id="p5-3">5.3 DocumentService <span class="badge">2h</span></h3>
+<div class="filename">app/schemas/document.py</div>
+<pre class="file"><code>import uuid
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
+
+
+class DocumentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    filename: str
+    content_type: str
+    size_bytes: int
+    uploaded_at: datetime</code></pre>
+<div class="filename">app/services/document_service.py</div>
+<pre class="file"><code>import uuid
+
+from fastapi import UploadFile
+from sqlalchemy.orm import Session
+
+from app.core.config import get_settings
+from app.core.s3 import get_s3_client
+from app.exceptions import AppError, NotFoundError
+from app.models.document import Document
+from app.repositories.document_repository import DocumentRepository
+
+settings = get_settings()
+ALLOWED_CONTENT_TYPES = {
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # .docx
+}
+
+
+class StorageLimitExceededError(AppError):
+    pass
+
+
+class UnsupportedFileTypeError(AppError):
+    pass
+
+
+class DocumentService:
+    def __init__(self, db: Session) -> None:
+        self.db = db
+        self.documents = DocumentRepository(db)
+        self.s3 = get_s3_client()
+
+    def upload(self, project_id: uuid.UUID, file: UploadFile) -> Document:
+        if file.content_type not in ALLOWED_CONTENT_TYPES:
+            raise UnsupportedFileTypeError(f"unsupported content type: {file.content_type}")
+
+        body = file.file.read()
+        size = len(body)
+
+        current_total = self.documents.total_size_for_project(project_id)
+        limit_bytes = settings.MAX_PROJECT_STORAGE_MB * 1024 * 1024
+        if current_total + size > limit_bytes:
+            raise StorageLimitExceededError("project storage limit exceeded")
+
+        key = f"projects/{project_id}/{uuid.uuid4()}-{file.filename}"
+        self.s3.put_object(
+            Bucket=settings.S3_BUCKET_NAME, Key=key, Body=body, ContentType=file.content_type
+        )
+        doc = Document(
+            project_id=project_id,
+            filename=file.filename or "unnamed",
+            content_type=file.content_type,
+            s3_key=key,
+            size_bytes=size,
+        )
+        return self.documents.add(doc)
+
+    def get_download_stream(self, document_id: uuid.UUID) -> tuple[Document, bytes]:
+        doc = self.documents.get(document_id)
+        if doc is None:
+            raise NotFoundError("document not found")
+        obj = self.s3.get_object(Bucket=settings.S3_BUCKET_NAME, Key=doc.s3_key)
+        return doc, obj["Body"].read()
+
+    def delete(self, document_id: uuid.UUID) -> None:
+        doc = self.documents.get(document_id)
+        if doc is None:
+            raise NotFoundError("document not found")
+        self.s3.delete_object(Bucket=settings.S3_BUCKET_NAME, Key=doc.s3_key)
+        self.documents.delete(doc)
+
+    def delete_all_for_project(self, project_id: uuid.UUID) -> None:
+        for doc in self.documents.list_for_project(project_id):
+            self.s3.delete_object(Bucket=settings.S3_BUCKET_NAME, Key=doc.s3_key)
+            self.documents.delete(doc)</code></pre>
+<div class="filename">app/services/project_service.py <span style="color:#9aa3b8;font-weight:400;">(wire in S3 cleanup on delete)</span></div>
+<pre class="file"><code># in ProjectService.delete(), before self.projects.delete(project):
+from app.services.document_service import DocumentService
+DocumentService(self.db).delete_all_for_project(project_id)</code></pre>
+
+<h3 id="p5-4">5.4 Router: documents <span class="badge">1.5h</span></h3>
+<div class="filename">app/api/routers/documents.py</div>
+<pre class="file"><code>import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi.responses import Response
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_db, require_project_access
+from app.exceptions import NotFoundError
+from app.schemas.document import DocumentOut
+from app.services.document_service import (
+    DocumentService,
+    StorageLimitExceededError,
+    UnsupportedFileTypeError,
+)
+
+router = APIRouter(tags=["documents"])
+
+
+@router.get("/project/{project_id}/documents", response_model=list[DocumentOut])
+def list_documents(
+    project_id: uuid.UUID, db: Session = Depends(get_db), _access=Depends(require_project_access)
+) -> list[DocumentOut]:
+    docs = DocumentService(db).documents.list_for_project(project_id)
+    return [DocumentOut.model_validate(d) for d in docs]
+
+
+@router.post(
+    "/project/{project_id}/documents",
+    response_model=list[DocumentOut],
+    status_code=status.HTTP_201_CREATED,
+)
+def upload_documents(
+    project_id: uuid.UUID,
+    files: list[UploadFile],
+    db: Session = Depends(get_db),
+    _access=Depends(require_project_access),
+) -> list[DocumentOut]:
+    service = DocumentService(db)
+    results = []
+    try:
+        for f in files:
+            results.append(service.upload(project_id, f))
+    except UnsupportedFileTypeError as exc:
+        raise HTTPException(status_code=415, detail=str(exc)) from exc
+    except StorageLimitExceededError as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
+    return [DocumentOut.model_validate(d) for d in results]
+
+
+@router.get("/document/{document_id}")
+def download_document(
+    document_id: uuid.UUID, db: Session = Depends(get_db), _access=Depends(require_project_access)
+) -> Response:
+    try:
+        doc, content = DocumentService(db).get_download_stream(document_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(
+        content=content,
+        media_type=doc.content_type,
+        headers={"Content-Disposition": f'attachment; filename="{doc.filename}"'},
+    )
+
+
+@router.delete("/document/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document(
+    document_id: uuid.UUID, db: Session = Depends(get_db), _access=Depends(require_project_access)
+) -> None:
+    try:
+        DocumentService(db).delete(document_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc</code></pre>
+<div class="box warn"><h5>Note on require_project_access here</h5><code>require_project_access</code> is declared with a <code>project_id</code> path param, but <code>/document/&lt;id&gt;</code> routes only have a <code>document_id</code>. In the real repo, add a small variant dependency <code>require_document_access(document_id)</code> that looks up the document's <code>project_id</code> first, then delegates to the same access check — shown as an exercise/refinement once documents exist, to avoid a circular lookup here.</div>
+
+<h3 id="p5-5">5.5 Tests with moto (mock S3) <span class="badge">2.75h</span></h3>
+<pre class="cmd"><code>poetry add --group dev moto[s3]</code></pre>
+<div class="filename">tests/conftest.py <span style="color:#9aa3b8;font-weight:400;">(add S3 fixture)</span></div>
+<pre class="file"><code>import boto3
+import pytest
+from moto import mock_aws
+
+from app.core.config import get_settings
+
+
+@pytest.fixture()
+def s3_bucket():
+    with mock_aws():
+        settings = get_settings()
+        client = boto3.client("s3", region_name=settings.AWS_REGION)
+        client.create_bucket(
+            Bucket=settings.S3_BUCKET_NAME,
+            CreateBucketConfiguration={"LocationConstraint": settings.AWS_REGION},
+        )
+        yield client</code></pre>
+<div class="filename">tests/test_documents.py</div>
+<pre class="file"><code>import io
+
+
+def _create_project(client, headers, name="Docs Project"):
+    resp = client.post("/projects", json={"name": name}, headers=headers)
+    return resp.json()["id"]
+
+
+def test_upload_list_download_delete_document(client, auth_headers, s3_bucket) -> None:
+    headers = auth_headers("docowner")
+    project_id = _create_project(client, headers)
+
+    file_content = b"%PDF-1.4 fake pdf content"
+    resp = client.post(
+        f"/project/{project_id}/documents",
+        headers=headers,
+        files={"files": ("report.pdf", io.BytesIO(file_content), "application/pdf")},
+    )
+    assert resp.status_code == 201
+    document_id = resp.json()[0]["id"]
+
+    resp = client.get(f"/project/{project_id}/documents", headers=headers)
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+
+    resp = client.get(f"/document/{document_id}", headers=headers)
+    assert resp.status_code == 200
+    assert resp.content == file_content
+
+    resp = client.delete(f"/document/{document_id}", headers=headers)
+    assert resp.status_code == 204
+
+    resp = client.get(f"/project/{project_id}/documents", headers=headers)
+    assert resp.json() == []
+
+
+def test_upload_rejects_unsupported_type(client, auth_headers, s3_bucket) -> None:
+    headers = auth_headers("docowner2")
+    project_id = _create_project(client, headers)
+    resp = client.post(
+        f"/project/{project_id}/documents",
+        headers=headers,
+        files={"files": ("image.png", io.BytesIO(b"fake"), "image/png")},
+    )
+    assert resp.status_code == 415</code></pre>
+<pre class="cmd"><code>poetry run pytest
+git add app tests pyproject.toml poetry.lock
+git commit -m "feat: S3-backed document upload/download/delete, storage quota check, moto tests"
+git push -u origin feat/phase-5-documents   # PR -> CI -> merge</code></pre>
+
+<hr>
+
+<h2 id="phase6">Phase 6 — Invite &amp; Share <span class="hours">~4h</span></h2>
+<p>Branch: <code>feat/phase-6-invite-share</code></p>
+
+<h3 id="p6-1">6.1 POST /project/&lt;id&gt;/invite <span class="badge">2h</span></h3>
+<div class="filename">app/services/project_service.py <span style="color:#9aa3b8;font-weight:400;">(add method)</span></div>
+<pre class="file"><code>def invite(self, owner_id: uuid.UUID, project_id: uuid.UUID, invitee_login: str) -> None:
+    owner_access = self.access.get_for_user_and_project(owner_id, project_id)
+    if owner_access is None or owner_access.role != Role.OWNER:
+        raise PermissionDeniedError("only the owner can invite users")
+
+    from app.repositories.user_repository import UserRepository  # local import avoids cycle
+    invitee = UserRepository(self.db).get_by_login(invitee_login)
+    if invitee is None:
+        raise NotFoundError(f"user '{invitee_login}' not found")
+
+    if self.access.get_for_user_and_project(invitee.id, project_id) is None:
+        self.access.grant(invitee.id, project_id, Role.PARTICIPANT)</code></pre>
+<div class="filename">app/api/routers/projects.py <span style="color:#9aa3b8;font-weight:400;">(add route)</span></div>
+<pre class="file"><code>@router.post("/project/{project_id}/invite", status_code=status.HTTP_204_NO_CONTENT)
+def invite_user(
+    project_id: uuid.UUID,
+    user: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    try:
+        ProjectService(db).invite(current_user.id, project_id, user)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionDeniedError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc</code></pre>
+
+<h3 id="p6-2">6.2 (Optional) GET /project/&lt;id&gt;/share?with=&lt;email&gt; <span class="badge">2h</span></h3>
+<p>Generates a signed, time-limited join token and emails a link. We reuse the existing JWT machinery with a distinct <code>purpose</code> claim so join-tokens can't be replayed as login tokens.</p>
+<div class="filename">app/core/security.py <span style="color:#9aa3b8;font-weight:400;">(add)</span></div>
+<pre class="file"><code>def create_join_token(project_id: uuid.UUID, invitee_email: str, minutes: int = 60 * 24) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=minutes)
+    payload = {"project_id": str(project_id), "email": invitee_email, "purpose": "join", "exp": expire}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)</code></pre>
+<div class="filename">app/api/routers/projects.py <span style="color:#9aa3b8;font-weight:400;">(add)</span></div>
+<pre class="file"><code>@router.get("/project/{project_id}/share")
+def share_project(
+    project_id: uuid.UUID,
+    with_: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    _owner=Depends(require_project_owner),
+) -> dict[str, str]:
+    token = create_join_token(project_id, with_)
+    join_link = f"https://app.example.com/join?token={token}"
+    # send_email(to=with_, subject="You're invited", body=join_link)  # stub — wire to SES in prod
+    return {"detail": "invite sent", "join_link": join_link}  # link also returned for local/dev testing</code></pre>
+<div class="box tip"><h5>Production note</h5>Replace the commented <code>send_email</code> stub with AWS SES (<code>boto3.client("ses")</code>) or a transactional-email provider. Keep the join link itself out of API responses in production — it's returned here only to make local/dev testing possible without a real inbox.</div>
+<h4>Tests</h4>
+<div class="filename">tests/test_invite_share.py</div>
+<pre class="file"><code>def test_owner_can_invite_existing_user(client, auth_headers) -> None:
+    owner_headers = auth_headers("inv_owner")
+    auth_headers("inv_participant")  # register the invitee too
+    resp = client.post("/projects", json={"name": "Shared"}, headers=owner_headers)
+    project_id = resp.json()["id"]
+
+    resp = client.post(f"/project/{project_id}/invite?user=inv_participant", headers=owner_headers)
+    assert resp.status_code == 204
+
+    participant_headers = {"Authorization": owner_headers["Authorization"]}  # placeholder, real test logs in as participant
+</code></pre>
+<pre class="cmd"><code>poetry run pytest
+git add app tests
+git commit -m "feat: project invite endpoint + optional email-share join-link flow"
+git push -u origin feat/phase-6-invite-share   # PR -> CI -> merge</code></pre>
+
+<hr>
+
+<h2 id="phase7">Phase 7 — AWS Lambda (S3 Events) <span class="hours">~4h</span></h2>
+<p>Branch: <code>feat/phase-7-lambda</code>. Kept as a separate top-level package so it can be packaged/deployed independently of the API.</p>
+<pre class="cmd"><code>mkdir -p lambda/tests
+touch lambda/__init__.py</code></pre>
+
+<h3 id="p7-1">7.1 Image resize Lambda <span class="badge">1.5h</span></h3>
+<div class="filename">lambda/resize_handler.py</div>
+<pre class="file"><code>import io
+import os
+
+import boto3
+from PIL import Image
+
+s3 = boto3.client("s3")
+MAX_DIMENSION = 1024
+
+
+def handler(event, context):
+    for record in event["Records"]:
+        bucket = record["s3"]["bucket"]["name"]
+        key = record["s3"]["object"]["key"]
+
+        if not key.lower().endswith((".png", ".jpg", ".jpeg")):
+            continue  # non-image documents skip resizing
+
+        obj = s3.get_object(Bucket=bucket, Key=key)
+        image = Image.open(io.BytesIO(obj["Body"].read()))
+        image.thumbnail((MAX_DIMENSION, MAX_DIMENSION))
+
+        buffer = io.BytesIO()
+        image_format = image.format or "PNG"
+        image.save(buffer, format=image_format)
+        buffer.seek(0)
+
+        resized_key = key.replace("projects/", "projects-resized/", 1)
+        s3.put_object(Bucket=bucket, Key=resized_key, Body=buffer, ContentType=obj["ContentType"])
+
+    return {"statusCode": 200}</code></pre>
+
+<h3 id="p7-2">7.2 Storage-size limit Lambda <span class="badge">1.5h</span></h3>
+<div class="filename">lambda/size_calculator.py</div>
+<pre class="file"><code>import os
+
+import boto3
+import psycopg2
+
+s3 = boto3.client("s3")
+MAX_PROJECT_STORAGE_MB = int(os.environ.get("MAX_PROJECT_STORAGE_MB", "500"))
+
+
+def _project_id_from_key(key: str) -> str:
+    # key format: projects/<project_id>/<uuid>-<filename>
+    return key.split("/")[1]
+
+
+def handler(event, context):
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    try:
+        for record in event["Records"]:
+            bucket = record["s3"]["bucket"]["name"]
+            key = record["s3"]["object"]["key"]
+            project_id = _project_id_from_key(key)
+
+            total_bytes = 0
+            paginator = s3.get_paginator("list_objects_v2")
+            for page in paginator.paginate(Bucket=bucket, Prefix=f"projects/{project_id}/"):
+                for obj in page.get("Contents", []):
+                    total_bytes += obj["Size"]
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE projects SET storage_bytes = %s WHERE id = %s",
+                    (total_bytes, project_id),
+                )
+            conn.commit()
+
+            if total_bytes > MAX_PROJECT_STORAGE_MB * 1024 * 1024:
+                # flag project as over-quota; app layer blocks further uploads on next check
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE projects SET over_quota = TRUE WHERE id = %s", (project_id,)
+                    )
+                conn.commit()
+    finally:
+        conn.close()
+
+    return {"statusCode": 200}</code></pre>
+<div class="box tip"><h5>Deploy sketch (AWS SAM)</h5>
+<pre class="file" style="margin-top:8px"><code># template.yaml (excerpt)
+Resources:
+  ResizeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: resize_handler.handler
+      Runtime: python3.13
+      CodeUri: lambda/
+      Events:
+        S3Upload:
+          Type: S3
+          Properties:
+            Bucket: !Ref DocumentsBucket
+            Events: s3:ObjectCreated:*</code></pre>
+<pre class="cmd" style="margin-top:8px"><code>sam build && sam deploy --guided</code></pre>
+</div>
+
+<h3 id="p7-3">7.3 Unit tests for Lambda handlers <span class="badge">1h</span></h3>
+<div class="filename">lambda/tests/test_resize_handler.py</div>
+<pre class="file"><code>import io
+
+import boto3
+from moto import mock_aws
+from PIL import Image
+
+from lambda.resize_handler import handler
+
+
+@mock_aws
+def test_resize_handler_shrinks_large_image() -> None:
+    s3 = boto3.client("s3", region_name="us-east-1")
+    s3.create_bucket(Bucket="test-bucket")
+
+    big_image = Image.new("RGB", (2000, 2000), color="red")
+    buf = io.BytesIO()
+    big_image.save(buf, format="PNG")
+    buf.seek(0)
+    s3.put_object(Bucket="test-bucket", Key="projects/p1/photo.png", Body=buf, ContentType="image/png")
+
+    event = {
+        "Records": [
+            {"s3": {"bucket": {"name": "test-bucket"}, "object": {"key": "projects/p1/photo.png"}}}
+        ]
+    }
+    handler(event, None)
+
+    resized = s3.get_object(Bucket="test-bucket", Key="projects-resized/p1/photo.png")
+    resized_image = Image.open(io.BytesIO(resized["Body"].read()))
+    assert max(resized_image.size) <= 1024</code></pre>
+<pre class="cmd"><code>poetry add --group dev pillow
+poetry run pytest lambda/tests
+git add lambda
+git commit -m "feat: S3-triggered Lambda handlers for image resize and storage-quota calc, unit tests"
+git push -u origin feat/phase-7-lambda   # PR -> CI -> merge</code></pre>
+
+<hr>
+
+<h2 id="phase8">Phase 8 — CI/CD Pipeline <span class="hours">~3h</span></h2>
+<p>Branch: <code>feat/phase-8-cicd</code>. We already have lint+test running since Phase 1; now we add build → push → deploy, gated on merge to <code>main</code>.</p>
+
+<h3 id="p8-1">8.1 Lint + test (already in place, tightened) <span class="badge">30 min</span></h3>
+<p>Add a coverage floor and split into a matrix-friendly reusable job (kept as-is from Phase 1, just referenced here as job <code>test</code>).</p>
+
+<h3 id="p8-2">8.2 Build &amp; push Docker image <span class="badge">1h</span></h3>
+<div class="filename">.github/workflows/ci.yml <span style="color:#9aa3b8;font-weight:400;">(append job)</span></div>
+<pre class="file"><code>  build-and-push:
+    needs: lint-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max</code></pre>
+
+<h3 id="p8-3">8.3 Deploy on merge <span class="badge">1.5h</span></h3>
+<div class="filename">.github/workflows/ci.yml <span style="color:#9aa3b8;font-weight:400;">(append job — example: ECS service update)</span></div>
+<pre class="file"><code>  deploy:
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+      - name: Force new ECS deployment
+        run: |
+          aws ecs update-service \
+            --cluster projects-dashboard-cluster \
+            --service projects-dashboard-api \
+            --force-new-deployment
+      - name: Run DB migrations
+        run: |
+          aws ecs run-task \
+            --cluster projects-dashboard-cluster \
+            --task-definition projects-dashboard-migrate \
+            --launch-type FARGATE</code></pre>
+<div class="box git"><h5>GitHub repo secrets to add now</h5>Settings → Secrets and variables → Actions: <code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>, <code>SECRET_KEY</code> (prod JWT secret), <code>PROD_DATABASE_URL</code>. Never echo these in logs; GitHub auto-masks values that match registered secrets.</div>
+<pre class="cmd"><code>git add .github
+git commit -m "ci: add build/push to GHCR and deploy-on-merge jobs"
+git push -u origin feat/phase-8-cicd   # PR -> CI -> merge to main triggers full pipeline</code></pre>
+
+<hr>
+
+<h2 id="phase9">Phase 9 — Packaging &amp; Polish <span class="hours">~2h</span></h2>
+<p>Branch: <code>feat/phase-9-packaging</code></p>
+
+<h3 id="p9-1">9.1 pyproject packaging metadata + tox <span class="badge">1h</span></h3>
+<div class="filename">pyproject.toml <span style="color:#9aa3b8;font-weight:400;">(append/confirm)</span></div>
+<pre class="file"><code>[tool.poetry]
+name = "projects-dashboard-api"
+version = "1.0.0"
+description = "Project management/profiles dashboard API"
+authors = ["Your Name <you@example.com>"]
+packages = [{ include = "app" }]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"</code></pre>
+<div class="filename">tox.ini</div>
+<pre class="file"><code>[tox]
+envlist = py310
+isolated_build = true
+
+[testenv]
+allowlist_externals = poetry
+commands =
+    poetry install
+    poetry run ruff check .
+    poetry run mypy app
+    poetry run pytest</code></pre>
+<pre class="cmd"><code>poetry build   # produces dist/*.whl and dist/*.tar.gz
+tox</code></pre>
+
+<h3 id="p9-2">9.2 README, OpenAPI docs, final tag <span class="badge">1h</span></h3>
+<p>Write a README with: quick start (<code>docker compose up</code>), env var table, architecture diagram (the CSR layers from the top of this document), API summary (link to <code>/docs</code>), test/lint commands, deployment overview. FastAPI already serves interactive OpenAPI docs at <code>/docs</code> and <code>/redoc</code> for free — link both.</p>
+<pre class="cmd"><code>git add pyproject.toml tox.ini README.md
+git commit -m "chore: packaging metadata, tox, README polish"
+git push -u origin feat/phase-9-packaging   # PR -> CI -> merge
+
+git checkout main && git pull
+git tag -a v1.0.0 -m "v1.0.0: full CSR-architected projects dashboard API"
+git push origin v1.0.0</code></pre>
+
+<hr>
+
+<h2 id="recommendations">Best Practices &amp; Recommendations <span class="badge">read throughout</span></h2>
+<div class="box tip"><h5>Layering discipline</h5>Never let a router import a Repository directly, and never let a Repository raise <code>HTTPException</code>. If you find yourself doing either, the boundary has leaked — pull the logic into the Service.</div>
+<div class="box tip"><h5>Schemas ≠ Models</h5>Keep Pydantic schemas and SQLAlchemy models in separate files/modules, even when they look similar. It's the only thing standing between an accidental <code>hashed_password</code> leak and a clean API response.</div>
+<div class="box">
+<h5>Testing pyramid</h5>
+<ul>
+<li>Unit tests (fast, no I/O): <code>core/security.py</code>, pure service logic with fakes.</li>
+<li>Integration tests (SQLite/Postgres + moto S3): most of what's shown above — one per endpoint/behavior.</li>
+<li>A handful of true end-to-end tests against a docker-composed stack, run in CI on a schedule, not every PR.</li>
+</ul>
+</div>
+<div class="box warn"><h5>Secrets discipline</h5><code>.env</code> is gitignored from commit #1. <code>.env.example</code> documents every variable with dummy values. Production secrets live only in GitHub Actions Secrets / AWS Secrets Manager, injected as environment variables at deploy time — never baked into the Docker image.</div>
+<div class="box">
+<h5>Pydantic validation everywhere</h5>
+Every request body, query param, and response is a typed Pydantic model — including the "optional" endpoints. This gets you automatic 422s on bad input, OpenAPI schema generation, and IDE autocomplete for free; don't accept raw <code>dict</code> bodies.
+</div>
+<div class="box">
+<h5>JWT specifics</h5>
+<ul>
+<li>1-hour expiry as required by spec — enforce via the <code>exp</code> claim, not application-side timers.</li>
+<li>Sign with <code>SECRET_KEY</code> (HS256) for simplicity here; for multi-service deployments prefer RS256 with a private/public key pair so only the auth service can mint tokens.</li>
+<li>Never put role/permission data in the JWT itself for this design — access is re-checked against <code>ProjectAccess</code> on every request, so a revoked invite takes effect immediately rather than waiting for token expiry.</li>
+</ul>
+</div>
+<div class="box git">
+<h5>Git/GitHub hygiene, summarized</h5>
+<ul>
+<li>Branch-per-phase, PR-per-phase, squash-merge, delete branch after merge.</li>
+<li>Conventional commit prefixes: <code>feat:</code>, <code>fix:</code>, <code>test:</code>, <code>ci:</code>, <code>chore:</code>, <code>refactor:</code>, <code>docs:</code>.</li>
+<li>Branch protection on <code>main</code>: required status checks + required review (even self-review discipline matters solo).</li>
+<li>Tag releases (<code>v0.1.0</code> after Phase 3, <code>v1.0.0</code> after Phase 9) so you have restore points.</li>
+</ul>
+</div>
+<div class="box">
+<h5>Normalization / denormalization (Phase-2 optional task, revisited)</h5>
+The schema above is fully normalized (3NF): <code>project_access</code> is a proper join table, no duplicated data. Once <code>GET /projects</code> traffic grows, consider a denormalized read model — e.g. a materialized view or a <code>project_summary</code> table with <code>document_count</code> and <code>total_size_bytes</code> pre-computed by the Phase-7 Lambda — to avoid an aggregate query on every list call. Keep the normalized tables as the source of truth; denormalize only for read paths that need it.
+</div>
+<div class="box">
+<h5>DB creation with vs. without an ORM (Phase-2 optional task)</h5>
+This roadmap uses SQLAlchemy + Alembic throughout. As a learning exercise, also write the equivalent <code>schema.sql</code> (raw <code>CREATE TABLE</code> statements + a thin <code>psycopg2</code>-based repository implementing the same <code>BaseRepository</code> interface) to see the same three-layer architecture hold up independent of the ORM choice — swap it in behind the same Service layer with zero router/service changes.
+</div>
+
+<footer>Projects Dashboard API — 50h roadmap · CSR architecture · FastAPI + PostgreSQL + S3 + Lambda</footer>
+</main>
+</div>
+</body>
+</html>
