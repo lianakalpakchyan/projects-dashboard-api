@@ -191,6 +191,7 @@ asyncio_mode = "auto"</code></pre>
     rev: v1.11.2
     hooks:
       - id: mypy
+        exclude: ^alembic/
         additional_dependencies: [pydantic]</code></pre>
 <pre class="cmd"><code>pre-commit install
 git add pyproject.toml poetry.lock .pre-commit-config.yaml .gitignore
@@ -320,7 +321,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]</code></p
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -334,8 +335,12 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]</code></p
     ports:
       - "8000:8000"
     volumes:
-      - ./app:/code/app   # live-reload in dev
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - ./app:/code/app
+      - ./alembic:/code/alembic
+      - ./alembic.ini:/code/alembic.ini
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
 volumes:
   pgdata:</code></pre>
@@ -429,24 +434,29 @@ engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True, future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db() -> Generator[Session]:
     """FastAPI dependency: yields a DB session, always closed after the request."""
     db = SessionLocal()
     try:
         yield db
     finally:
-        db.close()</code></pre>
+        db.close()
+</code></pre>
 
 <h3 id="p2-2">2.2 Models: User, Project, Document, ProjectAccess <span class="badge">2h</span></h3>
 <p>Four entities. <code>ProjectAccess</code> is the join table that also carries the <b>role</b> (owner/participant) — this is the normalized design; Phase 9's optional task revisits denormalizing a read-optimized view on top of it.</p>
 <div class="filename">app/models/user.py</div>
 <pre class="file"><code>import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base
+from app.db import Base
+
+if TYPE_CHECKING:
+    from app.models.access import ProjectAccess
 
 
 class User(Base):
@@ -457,15 +467,21 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    accesses: Mapped[list["ProjectAccess"]] = relationship(back_populates="user")</code></pre>
+    accesses: Mapped[list["ProjectAccess"]] = relationship(back_populates="user")
+</code></pre>
 <div class="filename">app/models/project.py</div>
 <pre class="file"><code>import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base
+from app.db import Base
+
+if TYPE_CHECKING:
+    from app.models.access import ProjectAccess
+    from app.models.document import Document
 
 
 class Project(Base):
@@ -473,7 +489,7 @@ class Project(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str] = mapped_column(Text, default="")
+    description: Mapped[str] = mapped_column(Text, default="", server_default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -484,20 +500,26 @@ class Project(Base):
     )
     documents: Mapped[list["Document"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
-    )</code></pre>
+    )
+</code></pre>
 <div class="filename">app/models/access.py</div>
 <pre class="file"><code>import enum
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Enum, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base
+from app.db import Base
+
+if TYPE_CHECKING:
+    from app.models.project import Project
+    from app.models.user import User
 
 
-class Role(str, enum.Enum):
-    OWNER = "owner"
-    PARTICIPANT = "participant"
+class Role(enum.StrEnum):
+    OWNER = "OWNER"
+    PARTICIPANT = "PARTICIPANT"
 
 
 class ProjectAccess(Base):
@@ -507,18 +529,25 @@ class ProjectAccess(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
-    role: Mapped[Role] = mapped_column(Enum(Role), default=Role.PARTICIPANT)
+
+    role: Mapped[Role] = mapped_column(
+        Enum(Role), default=Role.PARTICIPANT, server_default="PARTICIPANT"
+    )
 
     user: Mapped["User"] = relationship(back_populates="accesses")
     project: Mapped["Project"] = relationship(back_populates="accesses")</code></pre>
 <div class="filename">app/models/document.py</div>
 <pre class="file"><code>import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base
+from app.db import Base
+
+if TYPE_CHECKING:
+    from app.models.project import Project
 
 
 class Document(Base):
@@ -529,16 +558,27 @@ class Document(Base):
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     content_type: Mapped[str] = mapped_column(String(128), nullable=False)
     s3_key: Mapped[str] = mapped_column(String(512), nullable=False, unique=True)
-    size_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    size_bytes: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
-    project: Mapped["Project"] = relationship(back_populates="documents")</code></pre>
+    project: Mapped["Project"] = relationship(back_populates="documents")
+</code></pre>
 <pre class="cmd"><code>mkdir -p app/models && touch app/models/__init__.py</code></pre>
 <div class="filename">app/models/__init__.py</div>
-<pre class="file"><code>from app.models.access import ProjectAccess, Role  # noqa: F401
-from app.models.document import Document  # noqa: F401
-from app.models.project import Project  # noqa: F401
-from app.models.user import User  # noqa: F401</code></pre>
+<pre class="file"><code>from app.models.access import ProjectAccess, Role
+from app.models.document import Document
+from app.models.project import Project
+from app.models.user import User
+
+__all__ = [
+    "ProjectAccess",
+    "Role",
+    "Document",
+    "Project",
+    "User",
+]</code></pre>
 
 <h3 id="p2-3">2.3 Alembic migrations <span class="badge">1h</span></h3>
 <pre class="cmd"><code>poetry run alembic init alembic</code></pre>
@@ -546,13 +586,14 @@ from app.models.user import User  # noqa: F401</code></pre>
 <pre class="file"><code>sqlalchemy.url = driver://user:pass@localhost/dbname   # overridden in env.py, leave placeholder</code></pre>
 <div class="filename">alembic/env.py <span style="color:#9aa3b8;font-weight:400;">(key edits)</span></div>
 <pre class="file"><code>from app.core.config import get_settings
-from app.db.base import Base
+from app.db import Base
 import app.models  # noqa: F401  -- ensures all models are registered on Base.metadata
 
 config.set_main_option("sqlalchemy.url", get_settings().DATABASE_URL)
 target_metadata = Base.metadata</code></pre>
-<pre class="cmd"><code>poetry run alembic revision --autogenerate -m "create users, projects, documents, project_access"
-poetry run alembic upgrade head</code></pre>
+<pre class="cmd"><code>docker compose exec app alembic revision --autogenerate -m "create users, projects, documents, project_access"
+docker compose exec app alembic upgrade head
+docker compose exec db psql -U app -d projects_dashboard -c "\dt"</code></pre>
 <div class="box tip"><h5>Recommendation</h5>Always review the autogenerated migration file before applying it — Alembic autogenerate misses some things (e.g. enum type changes, some renames). Commit the generated migration file itself, never regenerate it in place later.</div>
 
 <h3 id="p2-4">2.4 Generic Repository base <span class="badge">1.5h</span></h3>
@@ -564,7 +605,7 @@ from typing import Generic, TypeVar
 
 from sqlalchemy.orm import Session
 
-from app.db.base import Base
+from app.db import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
 
@@ -594,7 +635,7 @@ class BaseRepository(Generic[ModelType]):
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.db.base import Base
+from app.db import Base
 import app.models  # noqa: F401
 
 
@@ -609,18 +650,21 @@ def db_session() -> Session:
     finally:
         session.close()</code></pre>
 <div class="filename">tests/test_repositories.py</div>
-<pre class="file"><code>from app.models.user import User
-from app.repositories.base import BaseRepository
+<pre class="file"><code>from sqlalchemy.orm import Session
+
+from app.models.user import User
+from app.repositories import BaseRepository
 
 
-def test_base_repository_add_and_get(db_session) -> None:
+def test_base_repository_add_and_get(db_session: Session) -> None:
     repo = BaseRepository(User, db_session)
     user = User(login="alice", hashed_password="x")
     saved = repo.add(user)
 
     fetched = repo.get(saved.id)
     assert fetched is not None
-    assert fetched.login == "alice"</code></pre>
+    assert fetched.login == "alice"
+</code></pre>
 <div class="box warn"><h5>Why SQLite in-memory here, Postgres in CI/prod</h5>Fast, dependency-free unit tests for repository logic. Anything relying on Postgres-only features (e.g. certain constraints) gets a separate integration test marked <code>@pytest.mark.integration</code> that runs against the CI Postgres service.</div>
 <pre class="cmd"><code>poetry run pytest
 git add app/db app/models alembic alembic.ini app/repositories tests
@@ -779,7 +823,7 @@ class AuthService:
 <div class="filename">app/api/deps.py</div>
 <pre class="file"><code>from collections.abc import Generator
 
-from app.db.session import get_db as _get_db  # re-exported for a single import surface
+from app.db import get_db as _get_db  # re-exported for a single import surface
 
 get_db = _get_db  # noqa: E731 (kept as a plain alias for clarity in router signatures)</code></pre>
 <div class="filename">app/api/routers/auth.py</div>
@@ -834,7 +878,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.core.security import decode_access_token
-from app.db.session import get_db
+from app.db import get_db
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 
