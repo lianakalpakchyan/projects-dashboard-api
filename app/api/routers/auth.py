@@ -5,9 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.exceptions import InvalidCredentialsError, UserAlreadyExistsError
-from app.schemas.token import Token
-from app.schemas.user import UserCreate, UserLogin, UserOut
-from app.services.auth_service import AuthService
+from app.schemas import Token, UserCreate, UserLogin, UserOut
+from app.services import AuthService
 
 router = APIRouter(tags=["auth"])
 

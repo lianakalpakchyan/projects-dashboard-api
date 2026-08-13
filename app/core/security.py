@@ -1,6 +1,6 @@
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any  # Imported for typing workaround
+from typing import Any
 
 import bcrypt
 from jose import JWTError, jwt
@@ -12,7 +12,7 @@ bcrypt_any: Any = bcrypt
 
 if not hasattr(bcrypt_any, "__about__"):
     bcrypt_version = getattr(bcrypt, "__version__", "4.0.0")
-    bcrypt_any.__about__ = type("__about__", (), {"__version__": bcrypt_version})()  # type: ignore
+    bcrypt_any.__about__ = type("__about__", (), {"__version__": bcrypt_version})()
 
 _original_hashpw = bcrypt_any.hashpw
 

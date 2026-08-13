@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 
 import pytest
 from fastapi.testclient import TestClient
@@ -38,3 +38,19 @@ def client(db_session: Session) -> Generator[TestClient]:
     with TestClient(fastapi_app) as c:
         yield c
     fastapi_app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def auth_headers(
+    client: TestClient,
+) -> Callable[[str], dict[str, str]]:
+    def _make(login: str = "owner") -> dict[str, str]:
+        client.post(
+            "/auth",
+            json={"login": login, "password": "supersecret", "repeat_password": "supersecret"},
+        )
+        resp = client.post("/login", json={"login": login, "password": "supersecret"})
+        token = resp.json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}
+
+    return _make
