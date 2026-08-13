@@ -30,7 +30,7 @@ jobs:
         run: poetry run mypy app
       - name: Test
         env:
-          SECRET_KEY: test-secret
+          SECRET_KEY: test-secret-key-32-characters-minimum
           POSTGRES_USER: app
           POSTGRES_PASSWORD: app
           POSTGRES_DB: projects_dashboard_test

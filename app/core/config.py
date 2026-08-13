@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60
 
+    # Logging
+    LOG_FILE: str = "logs/app.log"
+    LOG_LEVEL: str = "INFO"
+
     # Database
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
@@ -30,6 +34,7 @@ class Settings(BaseSettings):
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
     AWS_REGION: str = "eu-central-1"
+    AWS_SESSION_TOKEN: str | None = None
     S3_BUCKET_NAME: str = "projects-dashboard-docs"
     S3_ENDPOINT_URL: str | None = None  # set for local MinIO/moto testing
 

@@ -2386,6 +2386,18 @@ files = [
 ]
 
 [[package]]
+name = "types-boto3-s3"
+version = "1.43.66"
+description = "Type annotations for boto3 S3 1.43.66 service generated with mypy-boto3-builder 8.12.0"
+optional = false
+python-versions = ">=3.9"
+groups = ["dev"]
+files = [
+    {file = "types_boto3_s3-1.43.66-py3-none-any.whl", hash = "sha256:23e346c5a5b9bd4c1531fbe4676ee2e5af2e49c1b1858aee2525ce1341216649"},
+    {file = "types_boto3_s3-1.43.66.tar.gz", hash = "sha256:23d94a71f0f43c2822187d0f58bf1d098d8947dd406df28c794a3838d29a91f6"},
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.16.0"
 description = "Backported and Experimental Type Hints for Python 3.9+"
@@ -2825,4 +2837,4 @@ test = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13"
-content-hash = "8069744f7e0bb8e8bb10ba34a53d7100a3749519ccc0d4acd4dce3a61ed5ce8c"
+content-hash = "87de5a483409e9506a2a6709a943e26ce1b73a9546b6ad3be44d1c5b8ae42a37"

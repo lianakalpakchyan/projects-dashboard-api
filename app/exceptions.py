@@ -16,3 +16,11 @@ class NotFoundError(AppError):
 
 class PermissionDeniedError(AppError):
     pass
+
+
+class UnsupportedFileTypeError(AppError):
+    pass
+
+
+class StorageLimitExceededError(AppError):
+    pass

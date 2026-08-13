@@ -1,36 +1,39 @@
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Iterator
 
+import boto3
 import pytest
 from fastapi.testclient import TestClient
+from moto import mock_aws
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
+from types_boto3_s3.client import S3Client
 
 import app.models  # noqa: F401
 from app.api.deps import get_db
+from app.core.config import get_settings
 from app.db import Base
 from app.main import app as fastapi_app
 
 
-@pytest.fixture()
-def db_session() -> Generator[Session]:
+@pytest.fixture(name="db_session")
+def db_session_fixture() -> Generator[Session]:
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
     Base.metadata.create_all(engine)
-    testing_session = sessionmaker(bind=engine)
-    session = testing_session()
+    session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    session = session_factory()
     try:
         yield session
     finally:
         session.close()
-        engine.dispose()
 
 
-@pytest.fixture()
-def client(db_session: Session) -> Generator[TestClient]:
+@pytest.fixture(name="client")
+def client_fixture(db_session: Session) -> Generator[TestClient]:
     def _override_get_db() -> Generator[Session]:
         yield db_session
 
@@ -40,11 +43,9 @@ def client(db_session: Session) -> Generator[TestClient]:
     fastapi_app.dependency_overrides.clear()
 
 
-@pytest.fixture()
-def auth_headers(
-    client: TestClient,
-) -> Callable[[str], dict[str, str]]:
-    def _make(login: str = "owner") -> dict[str, str]:
+@pytest.fixture(name="auth_headers")
+def auth_headers_fixture(client: TestClient) -> Callable[[str], dict[str, str]]:
+    def _make(login: str = "user") -> dict[str, str]:
         client.post(
             "/auth",
             json={"login": login, "password": "supersecret", "repeat_password": "supersecret"},
@@ -54,3 +55,20 @@ def auth_headers(
         return {"Authorization": f"Bearer {token}"}
 
     return _make
+
+
+@pytest.fixture()
+def s3_bucket() -> Iterator[S3Client]:
+    with mock_aws():
+        settings = get_settings()
+        client = boto3.client("s3", region_name=settings.AWS_REGION)
+
+        if settings.AWS_REGION == "us-east-1":
+            client.create_bucket(Bucket=settings.S3_BUCKET_NAME)
+        else:
+            client.create_bucket(
+                Bucket=settings.S3_BUCKET_NAME,
+                CreateBucketConfiguration={"LocationConstraint": settings.AWS_REGION},
+            )
+
+        yield client
