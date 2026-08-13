@@ -1,5 +1,6 @@
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any  # Imported for typing workaround
 
 import bcrypt
 from jose import JWTError, jwt
@@ -7,12 +8,13 @@ from passlib.context import CryptContext
 
 from app.core.config import get_settings
 
-# 1. Use setattr to dynamically mock __about__ to bypass IDE errors
-if not hasattr(bcrypt, "__about__"):
-    bcrypt_version = getattr(bcrypt, "__version__", "4.0.0")
-    bcrypt.__about__ = type("__about__", (), {"__version__": bcrypt_version})()
+bcrypt_any: Any = bcrypt
 
-_original_hashpw = bcrypt.hashpw
+if not hasattr(bcrypt_any, "__about__"):
+    bcrypt_version = getattr(bcrypt, "__version__", "4.0.0")
+    bcrypt_any.__about__ = type("__about__", (), {"__version__": bcrypt_version})()  # type: ignore
+
+_original_hashpw = bcrypt_any.hashpw
 
 
 def _compat_hashpw(password: bytes, salt: bytes) -> bytes:
@@ -21,8 +23,7 @@ def _compat_hashpw(password: bytes, salt: bytes) -> bytes:
     return _original_hashpw(password, salt)
 
 
-# 2. Use setattr here as well to avoid IDE complaints about writing to compiled modules
-bcrypt.hashpw = _compat_hashpw
+bcrypt_any.hashpw = _compat_hashpw
 
 
 settings = get_settings()
