@@ -2,9 +2,9 @@ from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, hash_password, verify_password
 from app.exceptions import InvalidCredentialsError, UserAlreadyExistsError
-from app.models.user import User
-from app.repositories.user_repository import UserRepository
-from app.schemas.user import UserCreate, UserLogin
+from app.models import User
+from app.repositories import UserRepository
+from app.schemas import UserCreate, UserLogin
 
 
 class AuthService:

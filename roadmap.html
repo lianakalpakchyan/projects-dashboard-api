@@ -712,11 +712,7 @@ class UserOut(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
-
-
-class TokenPayload(BaseModel):
-    sub: str          # user id
-    exp: int</code></pre>
+</code></pre>
 
 <h3 id="p3-2">3.2 Security core: hashing + JWT <span class="badge">1h</span></h3>
 <div class="filename">app/core/security.py</div>
@@ -759,7 +755,7 @@ def decode_access_token(token: str) -> uuid.UUID | None:
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from app.repositories.base import BaseRepository
+from app.repositories import BaseRepository
 
 
 class UserRepository(BaseRepository[User]):
@@ -994,7 +990,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.access import ProjectAccess, Role
-from app.repositories.base import BaseRepository
+from app.repositories import BaseRepository
 
 
 class AccessRepository(BaseRepository[ProjectAccess]):
@@ -1019,7 +1015,7 @@ from sqlalchemy.orm import Session
 
 from app.models.access import ProjectAccess
 from app.models.project import Project
-from app.repositories.base import BaseRepository
+from app.repositories import BaseRepository
 
 
 class ProjectRepository(BaseRepository[Project]):
@@ -1308,7 +1304,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.document import Document
-from app.repositories.base import BaseRepository
+from app.repositories import BaseRepository
 
 
 class DocumentRepository(BaseRepository[Document]):
