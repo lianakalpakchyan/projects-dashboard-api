@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 
-from app.api.routers import auth, projects
+from app.api.routers import auth, documents, projects
 
 app = FastAPI(title="Projects Dashboard API", version="0.1.0")
 
 app.include_router(auth.router)
 app.include_router(projects.router)
+app.include_router(documents.router)
 
 
 @app.get("/health", tags=["system"])

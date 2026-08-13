@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from sqlalchemy.orm import Session
@@ -6,6 +7,10 @@ from app.exceptions import NotFoundError, PermissionDeniedError
 from app.models import Project, Role
 from app.repositories import AccessRepository, ProjectRepository
 from app.schemas import ProjectCreate, ProjectUpdate
+
+# from app.services import DocumentService
+
+logger = logging.getLogger(__name__)
 
 
 class ProjectService:
@@ -17,6 +22,7 @@ class ProjectService:
     def create(self, owner_id: uuid.UUID, payload: ProjectCreate) -> Project:
         project = self.projects.add(Project(name=payload.name, description=payload.description))
         self.access.grant(owner_id, project.id, Role.OWNER)
+        logger.info(f"Project {project.id} created successfully by Owner {owner_id}")
         return project
 
     def list_for_user(self, user_id: uuid.UUID) -> list[Project]:
@@ -43,8 +49,11 @@ class ProjectService:
     def delete(self, user_id: uuid.UUID, project_id: uuid.UUID) -> None:
         project = self.projects.get(project_id)
         if project is None:
-            raise NotFoundError("project not found")
+            raise NotFoundError("Project not found")
         access = self.access.get_for_user_and_project(user_id, project_id)
         if access is None or access.role != Role.OWNER:
-            raise PermissionDeniedError("only the owner can delete this project")
+            raise PermissionDeniedError("Only the owner can delete this project")
+
+        # DocumentService(self.db).delete_all_for_project(project_id)
+
         self.projects.delete(project)

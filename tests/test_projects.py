@@ -4,12 +4,13 @@ from fastapi.testclient import TestClient
 
 
 def test_create_project_grants_owner_access(
-    client: TestClient,
-    auth_headers: Callable[[str], dict[str, str]],
+    client: TestClient, auth_headers: Callable[[str], dict[str, str]]
 ) -> None:
     headers = auth_headers("owner1")
     resp = client.post(
-        "/projects", json={"name": "Alpha", "description": "first project"}, headers=headers
+        "/projects",
+        json={"name": "Alpha", "description": "first project"},
+        headers=headers,
     )
     assert resp.status_code == 201
     project_id = resp.json()["id"]
@@ -20,8 +21,7 @@ def test_create_project_grants_owner_access(
 
 
 def test_non_member_cannot_read_project(
-    client: TestClient,
-    auth_headers: Callable[[str], dict[str, str]],
+    client: TestClient, auth_headers: Callable[[str], dict[str, str]]
 ) -> None:
     owner_headers = auth_headers("owner2")
     other_headers = auth_headers("stranger")
@@ -33,8 +33,7 @@ def test_non_member_cannot_read_project(
 
 
 def test_only_owner_can_delete(
-    client: TestClient,
-    auth_headers: Callable[[str], dict[str, str]],
+    client: TestClient, auth_headers: Callable[[str], dict[str, str]]
 ) -> None:
     owner_headers = auth_headers("owner3")
     resp = client.post("/projects", json={"name": "Gamma"}, headers=owner_headers)
@@ -48,8 +47,7 @@ def test_only_owner_can_delete(
 
 
 def test_update_project_info(
-    client: TestClient,
-    auth_headers: Callable[[str], dict[str, str]],
+    client: TestClient, auth_headers: Callable[[str], dict[str, str]]
 ) -> None:
     headers = auth_headers("owner4")
     resp = client.post("/projects", json={"name": "Delta"}, headers=headers)

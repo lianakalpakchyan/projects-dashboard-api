@@ -19,8 +19,7 @@ def create_project(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> ProjectInfo:
-    project = ProjectService(db).create(current_user.id, payload)
-    return ProjectInfo.model_validate(project)
+    return ProjectInfo.model_validate(ProjectService(db).create(current_user.id, payload))
 
 
 @router.get("/projects", response_model=list[ProjectInfo])
@@ -41,9 +40,9 @@ def get_project_info(
     try:
         project = ProjectService(db).get_if_authorized(current_user.id, project_id)
     except NotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PermissionDeniedError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     return ProjectInfo.model_validate(project)
 
 
@@ -57,9 +56,9 @@ def update_project_info(
     try:
         project = ProjectService(db).update(current_user.id, project_id, payload)
     except NotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PermissionDeniedError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     return ProjectInfo.model_validate(project)
 
 
@@ -72,6 +71,6 @@ def delete_project(
     try:
         ProjectService(db).delete(current_user.id, project_id)
     except NotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PermissionDeniedError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc

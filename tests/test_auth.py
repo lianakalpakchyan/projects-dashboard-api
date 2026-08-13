@@ -1,4 +1,4 @@
-from starlette.testclient import TestClient
+from fastapi.testclient import TestClient
 
 
 def test_register_and_login_success(client: TestClient) -> None:
