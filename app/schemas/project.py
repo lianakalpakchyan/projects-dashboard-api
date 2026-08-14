@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.document import DocumentOut
+
 
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
@@ -21,3 +23,7 @@ class ProjectInfo(BaseModel):
     description: str
     created_at: datetime
     updated_at: datetime
+
+
+class ProjectFullInfo(ProjectInfo):
+    documents: list[DocumentOut] = []

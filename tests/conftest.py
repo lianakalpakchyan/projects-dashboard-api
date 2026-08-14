@@ -11,8 +11,9 @@ from types_boto3_s3.client import S3Client
 
 import app.models  # noqa: F401
 from app.api.deps import get_db
-from app.core.config import get_settings
+from app.core import settings
 from app.db import Base
+from app.db.session import get_raw_db_conn
 from app.main import app as fastapi_app
 
 
@@ -37,7 +38,11 @@ def client_fixture(db_session: Session) -> Generator[TestClient]:
     def _override_get_db() -> Generator[Session]:
         yield db_session
 
+    def _override_get_raw_db_conn() -> Generator[None]:
+        yield None
+
     fastapi_app.dependency_overrides[get_db] = _override_get_db
+    fastapi_app.dependency_overrides[get_raw_db_conn] = _override_get_raw_db_conn
     with TestClient(fastapi_app) as c:
         yield c
     fastapi_app.dependency_overrides.clear()
@@ -60,7 +65,6 @@ def auth_headers_fixture(client: TestClient) -> Callable[[str], dict[str, str]]:
 @pytest.fixture()
 def s3_bucket() -> Iterator[S3Client]:
     with mock_aws():
-        settings = get_settings()
         client = boto3.client("s3", region_name=settings.AWS_REGION)
 
         if settings.AWS_REGION == "us-east-1":

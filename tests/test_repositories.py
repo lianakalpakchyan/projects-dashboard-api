@@ -1,13 +1,11 @@
-# tests/test_repositories.py
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from app.repositories.base import BaseRepository
+from app.repositories import UserRepository
 
 
 def test_base_repository_add_and_get(db_session: Session) -> None:
-    repo: BaseRepository[User] = BaseRepository(User, db_session)
-
+    repo = UserRepository(db_session)
     user = User(login="alice", hashed_password="x")
     saved = repo.add(user)
 

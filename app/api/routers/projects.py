@@ -1,44 +1,44 @@
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_project_service
+from app.core import resolve_user_id
 from app.exceptions import NotFoundError, PermissionDeniedError
-from app.models import User
-from app.schemas import ProjectCreate, ProjectInfo, ProjectUpdate
-from app.services import ProjectService
+from app.schemas.project import ProjectCreate, ProjectFullInfo, ProjectInfo, ProjectUpdate
+from app.services.project_service import ProjectService
 
 router = APIRouter(tags=["projects"])
+
+ProjectServiceDep = Annotated[ProjectService, Depends(get_project_service)]
+CurrentUserDep = Annotated[Any, Depends(get_current_user)]
 
 
 @router.post("/projects", response_model=ProjectInfo, status_code=status.HTTP_201_CREATED)
 def create_project(
-    payload: ProjectCreate,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
+    payload: ProjectCreate, current_user: CurrentUserDep, service: ProjectServiceDep
 ) -> ProjectInfo:
-    return ProjectInfo.model_validate(ProjectService(db).create(current_user.id, payload))
+    user_id = resolve_user_id(current_user)
+    return ProjectInfo.model_validate(service.create(user_id, payload))
 
 
-@router.get("/projects", response_model=list[ProjectInfo])
+@router.get("/projects", response_model=list[ProjectFullInfo])
 def list_projects(
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
-) -> list[ProjectInfo]:
-    projects = ProjectService(db).list_for_user(current_user.id)
-    return [ProjectInfo.model_validate(p) for p in projects]
+    current_user: CurrentUserDep, service: ProjectServiceDep
+) -> list[ProjectFullInfo]:
+    user_id = resolve_user_id(current_user)
+    projects = service.list_for_user(user_id)
+    return [ProjectFullInfo.model_validate(p) for p in projects]
 
 
 @router.get("/project/{project_id}/info", response_model=ProjectInfo)
 def get_project_info(
-    project_id: uuid.UUID,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
+    project_id: uuid.UUID, current_user: CurrentUserDep, service: ProjectServiceDep
 ) -> ProjectInfo:
+    user_id = resolve_user_id(current_user)
     try:
-        project = ProjectService(db).get_if_authorized(current_user.id, project_id)
+        project = service.get_if_authorized(user_id, project_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PermissionDeniedError as exc:
@@ -50,11 +50,12 @@ def get_project_info(
 def update_project_info(
     project_id: uuid.UUID,
     payload: ProjectUpdate,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUserDep,
+    service: ProjectServiceDep,
 ) -> ProjectInfo:
+    user_id = resolve_user_id(current_user)
     try:
-        project = ProjectService(db).update(current_user.id, project_id, payload)
+        project = service.update(user_id, project_id, payload)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PermissionDeniedError as exc:
@@ -64,12 +65,11 @@ def update_project_info(
 
 @router.delete("/project/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_project(
-    project_id: uuid.UUID,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
+    project_id: uuid.UUID, current_user: CurrentUserDep, service: ProjectServiceDep
 ) -> None:
+    user_id = resolve_user_id(current_user)
     try:
-        ProjectService(db).delete(current_user.id, project_id)
+        service.delete(user_id, project_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PermissionDeniedError as exc:

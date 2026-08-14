@@ -4,12 +4,10 @@ from typing import TYPE_CHECKING
 
 import boto3
 
-from app.core import get_settings
+from app.core import settings
 
 if TYPE_CHECKING:
     from types_boto3_s3.client import S3Client
-
-settings = get_settings()
 
 
 def get_s3_client() -> S3Client:

@@ -1,19 +1,19 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_auth_service
 from app.exceptions import InvalidCredentialsError, UserAlreadyExistsError
 from app.schemas import Token, UserCreate, UserLogin, UserOut
-from app.services import AuthService
+from app.services.auth_service import AuthService
 
 router = APIRouter(tags=["auth"])
 
+AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+
 
 @router.post("/auth", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def create_user(payload: UserCreate, db: Annotated[Session, Depends(get_db)]) -> UserOut:
-    service = AuthService(db)
+def create_user(payload: UserCreate, service: AuthServiceDep) -> UserOut:
     try:
         user = service.register(payload)
     except UserAlreadyExistsError as exc:
@@ -22,8 +22,7 @@ def create_user(payload: UserCreate, db: Annotated[Session, Depends(get_db)]) ->
 
 
 @router.post("/login", response_model=Token)
-def login(payload: UserLogin, db: Annotated[Session, Depends(get_db)]) -> Token:
-    service = AuthService(db)
+def login(payload: UserLogin, service: AuthServiceDep) -> Token:
     try:
         token = service.login(payload)
     except InvalidCredentialsError as exc:

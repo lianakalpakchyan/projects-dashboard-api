@@ -4,12 +4,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import ProjectAccess, Role
-from app.repositories.base import BaseRepository
+from app.repositories.interfaces import AccessRepositoryInterface
 
 
-class AccessRepository(BaseRepository[ProjectAccess]):
+class AccessRepository(AccessRepositoryInterface[ProjectAccess]):
     def __init__(self, db: Session) -> None:
-        super().__init__(ProjectAccess, db)
+        self.db = db
 
     def get_for_user_and_project(
         self, user_id: uuid.UUID, project_id: uuid.UUID
@@ -20,4 +20,8 @@ class AccessRepository(BaseRepository[ProjectAccess]):
         return self.db.execute(stmt).scalar_one_or_none()
 
     def grant(self, user_id: uuid.UUID, project_id: uuid.UUID, role: Role) -> ProjectAccess:
-        return self.add(ProjectAccess(user_id=user_id, project_id=project_id, role=role))
+        access = ProjectAccess(user_id=user_id, project_id=project_id, role=role)
+        self.db.add(access)
+        self.db.commit()
+        self.db.refresh(access)
+        return access

@@ -1,32 +1,33 @@
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import Response
-from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_document_service
+from app.core import ALLOWED_CONTENT_TYPES, resolve_user_id
 from app.exceptions import (
     NotFoundError,
     PermissionDeniedError,
     StorageLimitExceededError,
     UnsupportedFileTypeError,
 )
-from app.models.user import User
 from app.schemas.document import DocumentOut
 from app.services.document_service import DocumentService
 
 router = APIRouter(tags=["documents"])
 
+DocServiceDep = Annotated[DocumentService, Depends(get_document_service)]
+CurrentUserDep = Annotated[Any, Depends(get_current_user)]
+
 
 @router.get("/project/{project_id}/documents", response_model=list[DocumentOut])
 def list_documents(
-    project_id: uuid.UUID,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
+    project_id: uuid.UUID, current_user: CurrentUserDep, service: DocServiceDep
 ) -> list[DocumentOut]:
+    user_id = resolve_user_id(current_user)
     try:
-        docs = DocumentService(db).list_for_project(current_user.id, project_id)
+        docs = service.list_for_project(user_id, project_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PermissionDeniedError as exc:
@@ -41,15 +42,23 @@ def list_documents(
 )
 def upload_documents(
     project_id: uuid.UUID,
-    files: Annotated[list[UploadFile], File(description="Binary files to upload")],
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
+    files: Annotated[list[UploadFile], File(...)],
+    current_user: CurrentUserDep,
+    service: DocServiceDep,
 ) -> list[DocumentOut]:
-    service = DocumentService(db)
+    user_id = resolve_user_id(current_user)
+
+    for f in files:
+        if f.content_type not in ALLOWED_CONTENT_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail=f"Unsupported content type: {f.content_type} for file '{f.filename}'",
+            )
+
     results = []
     try:
         for f in files:
-            results.append(service.upload(current_user.id, project_id, f))
+            results.append(service.upload(user_id, project_id, f))
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PermissionDeniedError as exc:
@@ -65,33 +74,64 @@ def upload_documents(
     return [DocumentOut.model_validate(d) for d in results]
 
 
-@router.get("/document/{document_id}")
-def download_document(
+@router.put("/document/{document_id}", response_model=DocumentOut)
+def update_document(
     document_id: uuid.UUID,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
-) -> Response:
+    file: Annotated[UploadFile, File(...)],
+    current_user: CurrentUserDep,
+    service: DocServiceDep,
+) -> DocumentOut:
+    user_id = resolve_user_id(current_user)
     try:
-        doc, content = DocumentService(db).get_download_stream(current_user.id, document_id)
+        updated = service.update(user_id, document_id, file)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PermissionDeniedError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except UnsupportedFileTypeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(exc)
+        ) from exc
+    except StorageLimitExceededError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(exc)
+        ) from exc
+    return DocumentOut.model_validate(updated)
+
+
+@router.get("/document/{document_id}")
+def download_document(
+    document_id: uuid.UUID, current_user: CurrentUserDep, service: DocServiceDep
+) -> Response:
+    user_id = resolve_user_id(current_user)
+    try:
+        doc, content = service.get_download_stream(user_id, document_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PermissionDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    if isinstance(doc, dict):
+        filename = doc["filename"]
+        content_type = doc["content_type"]
+    else:
+        filename = doc.filename
+        content_type = doc.content_type
+
     return Response(
         content=content,
-        media_type=doc.content_type,
-        headers={"Content-Disposition": f'attachment; filename="{doc.filename}"'},
+        media_type=content_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
 @router.delete("/document/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_document(
-    document_id: uuid.UUID,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
+    document_id: uuid.UUID, current_user: CurrentUserDep, service: DocServiceDep
 ) -> None:
+    user_id = resolve_user_id(current_user)
     try:
-        DocumentService(db).delete(current_user.id, document_id)
+        service.delete(user_id, document_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PermissionDeniedError as exc:

@@ -6,7 +6,7 @@ import bcrypt
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-from app.core.config import get_settings
+from app.core import settings
 
 bcrypt_any: Any = bcrypt
 
@@ -26,7 +26,6 @@ def _compat_hashpw(password: bytes, salt: bytes) -> bytes:
 bcrypt_any.hashpw = _compat_hashpw
 
 
-settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -50,3 +49,8 @@ def decode_access_token(token: str) -> uuid.UUID | None:
         return uuid.UUID(payload["sub"])
     except (JWTError, KeyError, ValueError):
         return None
+
+
+def resolve_user_id(user: Any) -> uuid.UUID:
+    uid = user.id if hasattr(user, "id") else user["id"]
+    return uuid.UUID(str(uid))
