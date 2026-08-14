@@ -7,6 +7,7 @@ from starlette import status
 
 from app.core import decode_access_token, settings
 from app.db import get_db, get_raw_db_conn
+from app.enums import DatabaseMode
 from app.repositories import (
     AccessRepository,
     AccessRepositoryInterface,
@@ -29,7 +30,7 @@ security_scheme = HTTPBearer()
 def get_user_repository(
     db: Annotated[Session, Depends(get_db)], conn: Annotated[Any, Depends(get_raw_db_conn)]
 ) -> UserRepositoryInterface:
-    if settings.DATABASE_MODE == "raw":
+    if settings.DATABASE_MODE == DatabaseMode.RAW:
         return RawSQLUserRepository(conn)
     return UserRepository(db)
 
@@ -37,7 +38,7 @@ def get_user_repository(
 def get_project_repository(
     db: Annotated[Session, Depends(get_db)], conn: Annotated[Any, Depends(get_raw_db_conn)]
 ) -> ProjectRepositoryInterface:
-    if settings.DATABASE_MODE == "raw":
+    if settings.DATABASE_MODE == DatabaseMode.RAW:
         return RawSQLProjectRepository(conn)
     return ProjectRepository(db)
 
@@ -45,7 +46,7 @@ def get_project_repository(
 def get_access_repository(
     db: Annotated[Session, Depends(get_db)], conn: Annotated[Any, Depends(get_raw_db_conn)]
 ) -> AccessRepositoryInterface:
-    if settings.DATABASE_MODE == "raw":
+    if settings.DATABASE_MODE == DatabaseMode.RAW:
         return RawSQLAccessRepository(conn)
     return AccessRepository(db)
 
@@ -53,7 +54,7 @@ def get_access_repository(
 def get_document_repository(
     db: Annotated[Session, Depends(get_db)], conn: Annotated[Any, Depends(get_raw_db_conn)]
 ) -> DocumentRepositoryInterface:
-    if settings.DATABASE_MODE == "raw":
+    if settings.DATABASE_MODE == DatabaseMode.RAW:
         return RawSQLDocumentRepository(conn)
     return DocumentRepository(db)
 

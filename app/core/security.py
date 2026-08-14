@@ -49,3 +49,8 @@ def decode_access_token(token: str) -> uuid.UUID | None:
         return uuid.UUID(payload["sub"])
     except (JWTError, KeyError, ValueError):
         return None
+
+
+def resolve_user_id(user: Any) -> uuid.UUID:
+    uid = user.id if hasattr(user, "id") else user["id"]
+    return uuid.UUID(str(uid))

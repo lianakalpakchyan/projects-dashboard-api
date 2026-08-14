@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import Response
 
 from app.api.deps import get_current_user, get_document_service
+from app.core import ALLOWED_CONTENT_TYPES, resolve_user_id
 from app.exceptions import (
     NotFoundError,
     PermissionDeniedError,
@@ -24,7 +25,7 @@ CurrentUserDep = Annotated[Any, Depends(get_current_user)]
 def list_documents(
     project_id: uuid.UUID, current_user: CurrentUserDep, service: DocServiceDep
 ) -> list[DocumentOut]:
-    user_id = current_user.id if hasattr(current_user, "id") else current_user["id"]
+    user_id = resolve_user_id(current_user)
     try:
         docs = service.list_for_project(user_id, project_id)
     except NotFoundError as exc:
@@ -45,7 +46,15 @@ def upload_documents(
     current_user: CurrentUserDep,
     service: DocServiceDep,
 ) -> list[DocumentOut]:
-    user_id = current_user.id if hasattr(current_user, "id") else current_user["id"]
+    user_id = resolve_user_id(current_user)
+
+    for f in files:
+        if f.content_type not in ALLOWED_CONTENT_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail=f"Unsupported content type: {f.content_type} for file '{f.filename}'",
+            )
+
     results = []
     try:
         for f in files:
@@ -72,7 +81,7 @@ def update_document(
     current_user: CurrentUserDep,
     service: DocServiceDep,
 ) -> DocumentOut:
-    user_id = current_user.id if hasattr(current_user, "id") else current_user["id"]
+    user_id = resolve_user_id(current_user)
     try:
         updated = service.update(user_id, document_id, file)
     except NotFoundError as exc:
@@ -94,7 +103,7 @@ def update_document(
 def download_document(
     document_id: uuid.UUID, current_user: CurrentUserDep, service: DocServiceDep
 ) -> Response:
-    user_id = current_user.id if hasattr(current_user, "id") else current_user["id"]
+    user_id = resolve_user_id(current_user)
     try:
         doc, content = service.get_download_stream(user_id, document_id)
     except NotFoundError as exc:
@@ -102,8 +111,13 @@ def download_document(
     except PermissionDeniedError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
-    filename = doc.filename if hasattr(doc, "filename") else doc["filename"]
-    content_type = doc.content_type if hasattr(doc, "content_type") else doc["content_type"]
+    if isinstance(doc, dict):
+        filename = doc["filename"]
+        content_type = doc["content_type"]
+    else:
+        filename = doc.filename
+        content_type = doc.content_type
+
     return Response(
         content=content,
         media_type=content_type,
@@ -115,7 +129,7 @@ def download_document(
 def delete_document(
     document_id: uuid.UUID, current_user: CurrentUserDep, service: DocServiceDep
 ) -> None:
-    user_id = current_user.id if hasattr(current_user, "id") else current_user["id"]
+    user_id = resolve_user_id(current_user)
     try:
         service.delete(user_id, document_id)
     except NotFoundError as exc:

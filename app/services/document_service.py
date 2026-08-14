@@ -4,7 +4,7 @@ from typing import Any, cast
 
 from fastapi import UploadFile
 
-from app.core import get_s3_client, settings
+from app.core import ALLOWED_CONTENT_TYPES, get_s3_client, settings
 from app.exceptions import (
     NotFoundError,
     StorageLimitExceededError,
@@ -14,11 +14,6 @@ from app.repositories import DocumentRepositoryInterface
 from app.services.project_service import ProjectService
 
 logger = logging.getLogger(__name__)
-
-ALLOWED_CONTENT_TYPES = {
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-}
 
 
 class DocumentService:

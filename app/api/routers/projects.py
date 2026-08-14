@@ -4,6 +4,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_user, get_project_service
+from app.core import resolve_user_id
 from app.exceptions import NotFoundError, PermissionDeniedError
 from app.schemas.project import ProjectCreate, ProjectFullInfo, ProjectInfo, ProjectUpdate
 from app.services.project_service import ProjectService
@@ -18,7 +19,7 @@ CurrentUserDep = Annotated[Any, Depends(get_current_user)]
 def create_project(
     payload: ProjectCreate, current_user: CurrentUserDep, service: ProjectServiceDep
 ) -> ProjectInfo:
-    user_id = current_user.id if hasattr(current_user, "id") else current_user["id"]
+    user_id = resolve_user_id(current_user)
     return ProjectInfo.model_validate(service.create(user_id, payload))
 
 
@@ -26,7 +27,7 @@ def create_project(
 def list_projects(
     current_user: CurrentUserDep, service: ProjectServiceDep
 ) -> list[ProjectFullInfo]:
-    user_id = current_user.id if hasattr(current_user, "id") else current_user["id"]
+    user_id = resolve_user_id(current_user)
     projects = service.list_for_user(user_id)
     return [ProjectFullInfo.model_validate(p) for p in projects]
 
@@ -35,7 +36,7 @@ def list_projects(
 def get_project_info(
     project_id: uuid.UUID, current_user: CurrentUserDep, service: ProjectServiceDep
 ) -> ProjectInfo:
-    user_id = current_user.id if hasattr(current_user, "id") else current_user["id"]
+    user_id = resolve_user_id(current_user)
     try:
         project = service.get_if_authorized(user_id, project_id)
     except NotFoundError as exc:
@@ -52,7 +53,7 @@ def update_project_info(
     current_user: CurrentUserDep,
     service: ProjectServiceDep,
 ) -> ProjectInfo:
-    user_id = current_user.id if hasattr(current_user, "id") else current_user["id"]
+    user_id = resolve_user_id(current_user)
     try:
         project = service.update(user_id, project_id, payload)
     except NotFoundError as exc:
@@ -66,7 +67,7 @@ def update_project_info(
 def delete_project(
     project_id: uuid.UUID, current_user: CurrentUserDep, service: ProjectServiceDep
 ) -> None:
-    user_id = current_user.id if hasattr(current_user, "id") else current_user["id"]
+    user_id = resolve_user_id(current_user)
     try:
         service.delete(user_id, project_id)
     except NotFoundError as exc:
