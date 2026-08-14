@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60
+    DATABASE_MODE: str = "orm"
 
     # Logging
     LOG_FILE: str = "logs/app.log"

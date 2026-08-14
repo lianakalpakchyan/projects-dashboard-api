@@ -13,6 +13,7 @@ import app.models  # noqa: F401
 from app.api.deps import get_db
 from app.core.config import get_settings
 from app.db import Base
+from app.db.session import get_raw_db_conn
 from app.main import app as fastapi_app
 
 
@@ -37,7 +38,11 @@ def client_fixture(db_session: Session) -> Generator[TestClient]:
     def _override_get_db() -> Generator[Session]:
         yield db_session
 
+    def _override_get_raw_db_conn() -> Generator[None]:
+        yield None
+
     fastapi_app.dependency_overrides[get_db] = _override_get_db
+    fastapi_app.dependency_overrides[get_raw_db_conn] = _override_get_raw_db_conn
     with TestClient(fastapi_app) as c:
         yield c
     fastapi_app.dependency_overrides.clear()

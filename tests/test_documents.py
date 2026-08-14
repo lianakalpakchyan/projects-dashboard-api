@@ -33,6 +33,20 @@ def test_upload_list_download_delete_document(
     assert resp.status_code == 200
     assert resp.content == file_content
 
+    # Validate physical update endpoint (PUT /document/)
+    replacement_content = b"%PDF-1.4 replacement pdf payload"
+    resp = client.put(
+        f"/document/{document_id}",
+        headers=headers,
+        files={"file": ("updated_report.pdf", io.BytesIO(replacement_content), "application/pdf")},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["filename"] == "updated_report.pdf"
+
+    resp = client.get(f"/document/{document_id}", headers=headers)
+    assert resp.status_code == 200
+    assert resp.content == replacement_content
+
     resp = client.delete(f"/document/{document_id}", headers=headers)
     assert resp.status_code == 204
 

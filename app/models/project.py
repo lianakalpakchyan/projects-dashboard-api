@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, String, Text, func
+from sqlalchemy import BigInteger, Boolean, DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -21,6 +21,9 @@ class Project(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+    storage_bytes: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    over_quota: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
     accesses: Mapped[list["ProjectAccess"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
