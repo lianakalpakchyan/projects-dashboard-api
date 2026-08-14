@@ -11,7 +11,7 @@ from types_boto3_s3.client import S3Client
 
 import app.models  # noqa: F401
 from app.api.deps import get_db
-from app.core.config import get_settings
+from app.core import settings
 from app.db import Base
 from app.db.session import get_raw_db_conn
 from app.main import app as fastapi_app
@@ -65,7 +65,6 @@ def auth_headers_fixture(client: TestClient) -> Callable[[str], dict[str, str]]:
 @pytest.fixture()
 def s3_bucket() -> Iterator[S3Client]:
     with mock_aws():
-        settings = get_settings()
         client = boto3.client("s3", region_name=settings.AWS_REGION)
 
         if settings.AWS_REGION == "us-east-1":

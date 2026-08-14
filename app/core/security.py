@@ -6,7 +6,7 @@ import bcrypt
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-from app.core.config import get_settings
+from app.core import settings
 
 bcrypt_any: Any = bcrypt
 
@@ -26,7 +26,6 @@ def _compat_hashpw(password: bytes, salt: bytes) -> bytes:
 bcrypt_any.hashpw = _compat_hashpw
 
 
-settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 

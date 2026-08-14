@@ -5,31 +5,25 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from starlette import status
 
-from app.core.config import get_settings
-from app.core.security import decode_access_token
-from app.db.session import get_db, get_raw_db_conn
-from app.repositories import RawSQLUserRepository, SQLAlchemyUserRepository
-from app.repositories.interfaces import (
+from app.core import decode_access_token, settings
+from app.db import get_db, get_raw_db_conn
+from app.repositories import (
+    AccessRepository,
     AccessRepositoryInterface,
+    DocumentRepository,
     DocumentRepositoryInterface,
+    ProjectRepository,
     ProjectRepositoryInterface,
-    UserRepositoryInterface,
-)
-from app.repositories.orm_repos import (
-    SQLAlchemyAccessRepository,
-    SQLAlchemyDocumentRepository,
-    SQLAlchemyProjectRepository,
-)
-from app.repositories.raw_repos import (
     RawSQLAccessRepository,
     RawSQLDocumentRepository,
     RawSQLProjectRepository,
+    RawSQLUserRepository,
+    UserRepository,
+    UserRepositoryInterface,
 )
-from app.services.auth_service import AuthService
-from app.services.document_service import DocumentService
-from app.services.project_service import ProjectService
+from app.services import AuthService, DocumentService, ProjectService
 
-settings = get_settings()
+security_scheme = HTTPBearer()
 
 
 def get_user_repository(
@@ -37,7 +31,31 @@ def get_user_repository(
 ) -> UserRepositoryInterface:
     if settings.DATABASE_MODE == "raw":
         return RawSQLUserRepository(conn)
-    return SQLAlchemyUserRepository(db)
+    return UserRepository(db)
+
+
+def get_project_repository(
+    db: Annotated[Session, Depends(get_db)], conn: Annotated[Any, Depends(get_raw_db_conn)]
+) -> ProjectRepositoryInterface:
+    if settings.DATABASE_MODE == "raw":
+        return RawSQLProjectRepository(conn)
+    return ProjectRepository(db)
+
+
+def get_access_repository(
+    db: Annotated[Session, Depends(get_db)], conn: Annotated[Any, Depends(get_raw_db_conn)]
+) -> AccessRepositoryInterface:
+    if settings.DATABASE_MODE == "raw":
+        return RawSQLAccessRepository(conn)
+    return AccessRepository(db)
+
+
+def get_document_repository(
+    db: Annotated[Session, Depends(get_db)], conn: Annotated[Any, Depends(get_raw_db_conn)]
+) -> DocumentRepositoryInterface:
+    if settings.DATABASE_MODE == "raw":
+        return RawSQLDocumentRepository(conn)
+    return DocumentRepository(db)
 
 
 def get_auth_service(
@@ -46,7 +64,18 @@ def get_auth_service(
     return AuthService(user_repo)
 
 
-security_scheme = HTTPBearer()
+def get_project_service(
+    project_repo: Annotated[ProjectRepositoryInterface, Depends(get_project_repository)],
+    access_repo: Annotated[AccessRepositoryInterface, Depends(get_access_repository)],
+) -> ProjectService:
+    return ProjectService(project_repo, access_repo)
+
+
+def get_document_service(
+    document_repo: Annotated[DocumentRepositoryInterface, Depends(get_document_repository)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+) -> DocumentService:
+    return DocumentService(document_repo, project_service)
 
 
 def get_current_user(
@@ -67,41 +96,3 @@ def get_current_user(
     if user is None:
         raise credentials_error
     return user
-
-
-def get_project_repository(
-    db: Annotated[Session, Depends(get_db)], conn: Annotated[Any, Depends(get_raw_db_conn)]
-) -> ProjectRepositoryInterface:
-    if settings.DATABASE_MODE == "raw":
-        return RawSQLProjectRepository(conn)
-    return SQLAlchemyProjectRepository(db)
-
-
-def get_access_repository(
-    db: Annotated[Session, Depends(get_db)], conn: Annotated[Any, Depends(get_raw_db_conn)]
-) -> AccessRepositoryInterface:
-    if settings.DATABASE_MODE == "raw":
-        return RawSQLAccessRepository(conn)
-    return SQLAlchemyAccessRepository(db)
-
-
-def get_project_service(
-    project_repo: Annotated[ProjectRepositoryInterface, Depends(get_project_repository)],
-    access_repo: Annotated[AccessRepositoryInterface, Depends(get_access_repository)],
-) -> ProjectService:
-    return ProjectService(project_repo, access_repo)
-
-
-def get_document_repository(
-    db: Annotated[Session, Depends(get_db)], conn: Annotated[Any, Depends(get_raw_db_conn)]
-) -> DocumentRepositoryInterface:
-    if settings.DATABASE_MODE == "raw":
-        return RawSQLDocumentRepository(conn)
-    return SQLAlchemyDocumentRepository(db)
-
-
-def get_document_service(
-    document_repo: Annotated[DocumentRepositoryInterface, Depends(get_document_repository)],
-    project_service: Annotated[ProjectService, Depends(get_project_service)],
-) -> DocumentService:
-    return DocumentService(document_repo, project_service)

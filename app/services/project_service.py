@@ -4,7 +4,7 @@ from typing import Any
 
 from app.exceptions import NotFoundError, PermissionDeniedError
 from app.models import Role
-from app.repositories.interfaces import AccessRepositoryInterface, ProjectRepositoryInterface
+from app.repositories import AccessRepositoryInterface, ProjectRepositoryInterface
 from app.schemas import ProjectCreate, ProjectUpdate
 
 logger = logging.getLogger(__name__)

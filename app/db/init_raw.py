@@ -2,10 +2,9 @@ import logging
 
 import psycopg2
 
-from app.core.config import get_settings
+from app.core import settings
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
 
 def init_raw_tables() -> None:
