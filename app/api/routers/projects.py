@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.api.deps import get_current_user, get_project_service
 from app.core import resolve_user_id
 from app.exceptions import NotFoundError, PermissionDeniedError
-from app.schemas.project import ProjectCreate, ProjectFullInfo, ProjectInfo, ProjectUpdate
-from app.services.project_service import ProjectService
+from app.schemas import ProjectCreate, ProjectFullInfo, ProjectInfo, ProjectUpdate
+from app.services import ProjectService
 
 router = APIRouter(tags=["projects"])
 

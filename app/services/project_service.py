@@ -82,6 +82,9 @@ class ProjectService:
             raise NotFoundError(f"user '{invitee_login}' not found")
         invitee_id = invitee.id if hasattr(invitee, "id") else invitee["id"]
 
+        if invitee_id == owner_id:
+            raise PermissionDeniedError("you cannot invite yourself to a project")
+
         if self.access.get_for_user_and_project(invitee_id, project_id) is None:
             self.access.grant(invitee_id, project_id, Role.PARTICIPANT)
 

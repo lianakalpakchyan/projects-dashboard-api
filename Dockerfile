@@ -8,9 +8,12 @@ WORKDIR /code
 
 RUN pip install --no-cache-dir poetry
 COPY pyproject.toml poetry.lock ./
-RUN poetry install --no-root --only main
+RUN poetry install --no-root
+
+
 
 COPY app ./app
+COPY lambdas ./lambdas
 COPY alembic ./alembic
 COPY alembic.ini ./
 COPY schema.sql ./

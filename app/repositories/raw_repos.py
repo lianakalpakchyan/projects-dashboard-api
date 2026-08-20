@@ -70,8 +70,7 @@ class RawSQLProjectRepository(ProjectRepositoryInterface):
     def get(self, id_: uuid.UUID) -> dict[str, Any] | None:
         with self.conn.cursor() as cur:
             cur.execute(
-                "SELECT id, name, description, storage_bytes, over_quota, created_at, updated_at "
-                "FROM projects WHERE id = %s",
+                "SELECT id, name, description, created_at, updated_at FROM projects WHERE id = %s",
                 (str(id_),),
             )
             row = cur.fetchone()
@@ -81,17 +80,14 @@ class RawSQLProjectRepository(ProjectRepositoryInterface):
                 "id": uuid.UUID(row[0]),
                 "name": row[1],
                 "description": row[2],
-                "storage_bytes": row[3],
-                "over_quota": row[4],
-                "created_at": row[5],
-                "updated_at": row[6],
+                "created_at": row[3],
+                "updated_at": row[4],
             }
 
     def list_for_user(self, user_id: uuid.UUID) -> list[dict[str, Any]]:
         with self.conn.cursor() as cur:
             cur.execute(
-                "SELECT p.id, p.name, p.description, p.storage_bytes, "
-                "p.over_quota, p.created_at, p.updated_at "
+                "SELECT p.id, p.name, p.description, p.created_at, p.updated_at "
                 "FROM projects p "
                 "JOIN project_access pa ON p.id = pa.project_id "
                 "WHERE pa.user_id = %s",
@@ -106,10 +102,8 @@ class RawSQLProjectRepository(ProjectRepositoryInterface):
                         "id": p_id,
                         "name": r[1],
                         "description": r[2],
-                        "storage_bytes": r[3],
-                        "over_quota": r[4],
-                        "created_at": r[5],
-                        "updated_at": r[6],
+                        "created_at": r[3],
+                        "updated_at": r[4],
                         "documents": self._list_docs_internal(p_id),
                     }
                 )
@@ -138,8 +132,7 @@ class RawSQLProjectRepository(ProjectRepositoryInterface):
         with self.conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO projects (id, name, description) VALUES (%s, %s, %s) "
-                "RETURNING id, name, description, storage_bytes, "
-                "over_quota, created_at, updated_at",
+                "RETURNING id, name, description, created_at, updated_at",
                 (str(id_), name, description),
             )
             row = cur.fetchone()
@@ -148,10 +141,8 @@ class RawSQLProjectRepository(ProjectRepositoryInterface):
                 "id": uuid.UUID(row[0]),
                 "name": row[1],
                 "description": row[2],
-                "storage_bytes": row[3],
-                "over_quota": row[4],
-                "created_at": row[5],
-                "updated_at": row[6],
+                "created_at": row[3],
+                "updated_at": row[4],
             }
 
     def update(self, id_: uuid.UUID, name: str | None, description: str | None) -> dict[str, Any]:
@@ -160,21 +151,21 @@ class RawSQLProjectRepository(ProjectRepositoryInterface):
                 cur.execute(
                     "UPDATE projects SET name = %s, description = %s, "
                     "updated_at = NOW() WHERE id = %s RETURNING id, name, description, "
-                    "storage_bytes, over_quota, created_at, updated_at",
+                    "created_at, updated_at",
                     (name, description, str(id_)),
                 )
             elif name is not None:
                 cur.execute(
                     "UPDATE projects SET name = %s, updated_at = NOW() "
                     "WHERE id = %s RETURNING id, name, description, "
-                    "storage_bytes, over_quota, created_at, updated_at",
+                    "created_at, updated_at",
                     (name, str(id_)),
                 )
             elif description is not None:
                 cur.execute(
                     "UPDATE projects SET description = %s, updated_at = NOW() "
-                    "WHERE id = %s RETURNING id, name, description, storage_bytes, "
-                    "over_quota, created_at, updated_at",
+                    "WHERE id = %s RETURNING id, name, description, "
+                    "created_at, updated_at",
                     (description, str(id_)),
                 )
             row = cur.fetchone()
@@ -183,10 +174,8 @@ class RawSQLProjectRepository(ProjectRepositoryInterface):
                 "id": uuid.UUID(row[0]),
                 "name": row[1],
                 "description": row[2],
-                "storage_bytes": row[3],
-                "over_quota": row[4],
-                "created_at": row[5],
-                "updated_at": row[6],
+                "created_at": row[3],
+                "updated_at": row[4],
             }
 
     def delete(self, instance: dict[str, Any]) -> None:
