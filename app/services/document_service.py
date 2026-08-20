@@ -28,29 +28,74 @@ class DocumentService:
         self.projects.get_if_authorized(user_id, project_id)
         return self.documents.list_for_project(project_id)
 
-    def upload(self, user_id: uuid.UUID, project_id: uuid.UUID, file: UploadFile) -> Any:
+    def upload(
+        self, user_id: uuid.UUID, project_id: uuid.UUID, files: list[UploadFile]
+    ) -> list[Any]:
+        """
+        All-or-nothing batch upload.
+
+        We read every file and validate content-type + total size *before*
+        writing anything to S3 or the DB. That way a batch either fully
+        succeeds or fails cleanly with nothing persisted.
+
+        If something still goes wrong mid-write (S3 error, DB error), we
+        best-effort roll back any S3 objects already written in this batch
+        before re-raising.
+        """
         self.projects.get_if_authorized(user_id, project_id)
 
-        content_type = file.content_type or "application/octet-stream"
-        filename = file.filename or "unnamed"
+        # --- Phase 1: read + validate everything up front, write nothing yet ---
+        staged: list[tuple[str, bytes, str]] = []  # (filename, body, content_type)
+        total_new_size = 0
 
-        if content_type not in ALLOWED_CONTENT_TYPES:
-            raise UnsupportedFileTypeError(f"Unsupported content type: {content_type}")
+        for file in files:
+            content_type = file.content_type or "application/octet-stream"
+            filename = file.filename or "unnamed"
 
-        body = file.file.read()
-        size = len(body)
+            if content_type not in ALLOWED_CONTENT_TYPES:
+                raise UnsupportedFileTypeError(
+                    f"Unsupported content type: {content_type} for file '{filename}'"
+                )
+
+            body = file.file.read()
+            staged.append((filename, body, content_type))
+            total_new_size += len(body)
 
         current_total = self.documents.total_size_for_project(project_id)
         limit_bytes = settings.MAX_PROJECT_STORAGE_MB * 1024 * 1024
-        if current_total + size > limit_bytes:
+        if current_total + total_new_size > limit_bytes:
             raise StorageLimitExceededError("Project storage limit exceeded.")
 
-        key = f"projects/{project_id}/{uuid.uuid4()}-{filename}"
-        self.s3.put_object(
-            Bucket=settings.S3_BUCKET_NAME, Key=key, Body=body, ContentType=content_type
-        )
+        # --- Phase 2: everything validated, now actually write it ---
+        written_keys: list[str] = []
+        results: list[Any] = []
+        try:
+            for filename, body, content_type in staged:
+                key = f"projects/{project_id}/{uuid.uuid4()}-{filename}"
+                self.s3.put_object(
+                    Bucket=settings.S3_BUCKET_NAME,
+                    Key=key,
+                    Body=body,
+                    ContentType=content_type,
+                )
+                written_keys.append(key)
+                results.append(
+                    self.documents.add(project_id, filename, content_type, key, len(body))
+                )
+        except Exception:
+            logger.exception(
+                "Batch upload failed mid-write for project %s; rolling back %d S3 object(s)",
+                project_id,
+                len(written_keys),
+            )
+            for key in written_keys:
+                try:
+                    self.s3.delete_object(Bucket=settings.S3_BUCKET_NAME, Key=key)
+                except Exception:
+                    logger.exception("Failed to roll back S3 object %s", key)
+            raise
 
-        return self.documents.add(project_id, filename, content_type, key, size)
+        return results
 
     def update(self, user_id: uuid.UUID, document_id: uuid.UUID, file: UploadFile) -> Any:
         doc = self.documents.get(document_id)

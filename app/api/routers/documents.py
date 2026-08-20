@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import Response
 
 from app.api.deps import get_current_user, get_document_service
-from app.core import ALLOWED_CONTENT_TYPES, resolve_user_id
+from app.core import resolve_user_id
 from app.exceptions import (
     NotFoundError,
     PermissionDeniedError,
@@ -48,17 +48,8 @@ def upload_documents(
 ) -> list[DocumentOut]:
     user_id = resolve_user_id(current_user)
 
-    for f in files:
-        if f.content_type not in ALLOWED_CONTENT_TYPES:
-            raise HTTPException(
-                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail=f"Unsupported content type: {f.content_type} for file '{f.filename}'",
-            )
-
-    results = []
     try:
-        for f in files:
-            results.append(service.upload(user_id, project_id, f))
+        results = service.upload(user_id, project_id, files)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PermissionDeniedError as exc:
@@ -68,9 +59,7 @@ def upload_documents(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(exc)
         ) from exc
     except StorageLimitExceededError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail=str(exc)) from exc
     return [DocumentOut.model_validate(d) for d in results]
 
 
@@ -93,9 +82,7 @@ def update_document(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(exc)
         ) from exc
     except StorageLimitExceededError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail=str(exc)) from exc
     return DocumentOut.model_validate(updated)
 
 

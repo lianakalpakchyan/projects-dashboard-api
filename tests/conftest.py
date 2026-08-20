@@ -31,6 +31,7 @@ def db_session_fixture() -> Generator[Session]:
         yield session
     finally:
         session.close()
+        engine.dispose()
 
 
 @pytest.fixture(name="client")

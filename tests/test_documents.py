@@ -54,14 +54,33 @@ def test_upload_list_download_delete_document(
     assert resp.json() == []
 
 
+def test_upload_accepts_supported_images(
+    client: TestClient, auth_headers: Callable[[str], dict[str, str]], s3_bucket: S3Client
+) -> None:
+    headers = auth_headers("imageowner")
+    project_id = _create_project(client, headers)
+
+    # Verify that PNG images are successfully uploaded
+    image_content = b"\x89PNG\r\n\x1a\nfake-png-headers"
+    resp = client.post(
+        f"/project/{project_id}/documents",
+        headers=headers,
+        files={"files": ("avatar.png", io.BytesIO(image_content), "image/png")},
+    )
+    assert resp.status_code == 201
+    assert resp.json()[0]["filename"] == "avatar.png"
+
+
 def test_upload_rejects_unsupported_type(
     client: TestClient, auth_headers: Callable[[str], dict[str, str]], s3_bucket: S3Client
 ) -> None:
     headers = auth_headers("docowner2")
     project_id = _create_project(client, headers)
+
+    # Verify that genuinely unsupported types like plain text are rejected
     resp = client.post(
         f"/project/{project_id}/documents",
         headers=headers,
-        files={"files": ("image.png", io.BytesIO(b"fake"), "image/png")},
+        files={"files": ("notes.txt", io.BytesIO(b"fake text file"), "text/plain")},
     )
     assert resp.status_code == 415
