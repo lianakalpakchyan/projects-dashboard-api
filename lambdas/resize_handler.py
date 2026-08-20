@@ -10,9 +10,6 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-s3 = boto3.client("s3")
-
-
 DEFAULT_MAX_IMAGE_DIMENSION = 1024
 
 IMAGE_EXTENSIONS = (
@@ -20,6 +17,24 @@ IMAGE_EXTENSIONS = (
     ".jpg",
     ".jpeg",
 )
+
+
+def _get_s3_client() -> Any:
+    """
+    Create an S3 client when the handler runs.
+
+    Creating the client inside the handler is important for tests
+    using Moto's @mock_aws because the AWS mock must already be active
+    when the client is created.
+    """
+
+    return boto3.client(
+        "s3",
+        region_name=os.getenv(
+            "AWS_REGION",
+            "us-east-1",
+        ),
+    )
 
 
 def handler(
@@ -33,6 +48,8 @@ def handler(
     """
 
     logger.info("Image resize Lambda started.")
+
+    s3 = _get_s3_client()
 
     # Pillow is packaged directly into the Lambda ZIP.
     try:
@@ -109,7 +126,9 @@ def handler(
             )
 
             # Open image.
-            image = Image.open(io.BytesIO(image_bytes))
+            image = Image.open(
+                io.BytesIO(image_bytes),
+            )
 
             image.load()
 
@@ -201,7 +220,9 @@ def handler(
         except Exception:
             failed += 1
 
-            logger.exception("Failed to process S3 record.")
+            logger.exception(
+                "Failed to process S3 record.",
+            )
 
     return {
         "statusCode": 200,
