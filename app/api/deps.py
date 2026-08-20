@@ -68,8 +68,9 @@ def get_auth_service(
 def get_project_service(
     project_repo: Annotated[ProjectRepositoryInterface, Depends(get_project_repository)],
     access_repo: Annotated[AccessRepositoryInterface, Depends(get_access_repository)],
+    user_repo: Annotated[UserRepositoryInterface, Depends(get_user_repository)],
 ) -> ProjectService:
-    return ProjectService(project_repo, access_repo)
+    return ProjectService(project_repo, access_repo, user_repo)
 
 
 def get_document_service(
