@@ -2,5 +2,10 @@ from enum import StrEnum
 
 
 class DatabaseMode(StrEnum):
-    RAW = "raw"
-    ORM = "orm"
+    RAW = "RAW"
+    ORM = "ORM"
+
+
+class Role(StrEnum):
+    OWNER = "OWNER"
+    PARTICIPANT = "PARTICIPANT"

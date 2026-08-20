@@ -1,4 +1,3 @@
-import enum
 import uuid
 from typing import TYPE_CHECKING
 
@@ -6,14 +5,10 @@ from sqlalchemy import Enum, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
+from app.enums import Role
 
 if TYPE_CHECKING:
     from app.models import Project, User
-
-
-class Role(enum.StrEnum):
-    OWNER = "OWNER"
-    PARTICIPANT = "PARTICIPANT"
 
 
 class ProjectAccess(Base):
