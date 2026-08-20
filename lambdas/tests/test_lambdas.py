@@ -3,6 +3,7 @@ import os
 
 from moto import mock_aws
 from PIL import Image
+from types_boto3_s3.client import S3Client
 
 # Centralized imports
 from app.core.config import settings
@@ -12,13 +13,27 @@ from lambdas.size_calculator import _extract_project_id
 from lambdas.size_calculator import handler as size_calculator
 
 
+def create_test_bucket(s3: S3Client) -> None:
+    if settings.AWS_REGION == "us-east-1":
+        s3.create_bucket(
+            Bucket=settings.S3_BUCKET_NAME,
+        )
+    else:
+        s3.create_bucket(
+            Bucket=settings.S3_BUCKET_NAME,
+            CreateBucketConfiguration={
+                "LocationConstraint": settings.AWS_REGION,
+            },
+        )
+
+
 @mock_aws
 def test_resize_handler_shrinks_large_image() -> None:
     # Set the environment variable for testing
     os.environ["MAX_IMAGE_DIMENSION"] = "500"
 
     s3 = get_s3_client()
-    s3.create_bucket(Bucket=settings.S3_BUCKET_NAME)
+    create_test_bucket(s3)
 
     big_image = Image.new("RGB", (2000, 2000), color="red")
     buf = io.BytesIO()
@@ -55,7 +70,7 @@ def test_resize_handler_shrinks_large_image() -> None:
 @mock_aws
 def test_resize_handler_ignores_resized_and_non_images() -> None:
     s3 = get_s3_client()
-    s3.create_bucket(Bucket=settings.S3_BUCKET_NAME)
+    create_test_bucket(s3)
 
     # Put a non-image file
     s3.put_object(Bucket=settings.S3_BUCKET_NAME, Key="projects/p1/notes.txt", Body=b"not an image")
@@ -89,7 +104,7 @@ def test_size_calculator_quota_auditing() -> None:
     settings.MAX_PROJECT_STORAGE_MB = 1  # 1 MB Limit for testing
 
     s3 = get_s3_client()
-    s3.create_bucket(Bucket=settings.S3_BUCKET_NAME)
+    create_test_bucket(s3)
 
     project_id = "123e4567-e89b-12d3-a456-426614174000"
 
