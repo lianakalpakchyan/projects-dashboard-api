@@ -4,10 +4,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import Project, ProjectAccess
-from app.repositories.interfaces import ProjectRepositoryInterface
 
 
-class ProjectRepository(ProjectRepositoryInterface[Project]):
+class ProjectRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 

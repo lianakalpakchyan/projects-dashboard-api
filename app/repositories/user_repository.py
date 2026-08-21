@@ -4,10 +4,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import User
-from app.repositories.interfaces import UserRepositoryInterface
 
 
-class UserRepository(UserRepositoryInterface[User]):
+class UserRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 

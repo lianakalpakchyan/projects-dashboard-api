@@ -321,7 +321,7 @@ def create_zip_payload(filename: str) -> bytes:
             handler_path = f"lambdas/{filename}.py"
 
             if not os.path.exists(handler_path):
-                raise FileNotFoundError(f"Lambda handler not found: {handler_path}")
+                raise FileNotFoundError(f"lambda handler not found: {handler_path}")
 
             zip_file.write(
                 handler_path,
@@ -453,6 +453,13 @@ def grant_s3_invocation_permission(
 
     bucket_arn = f"arn:aws:s3:::{settings.S3_BUCKET_NAME}"
 
+    sts = boto3.client(
+        "sts",
+        **session_kwargs,
+    )
+
+    account_id = sts.get_caller_identity()["Account"]
+
     try:
         lambda_client.add_permission(
             FunctionName=func_name,
@@ -460,6 +467,7 @@ def grant_s3_invocation_permission(
             Action="lambda:InvokeFunction",
             Principal="s3.amazonaws.com",
             SourceArn=bucket_arn,
+            SourceAccount=account_id,
         )
 
         logger.info(
@@ -468,7 +476,9 @@ def grant_s3_invocation_permission(
         )
 
     except ClientError as exc:
-        if exc.response["Error"]["Code"] == "ResourceConflictException":
+        error_code = exc.response["Error"]["Code"]
+
+        if error_code == "ResourceConflictException":
             logger.info(
                 "S3 permission already exists for %s.",
                 func_name,

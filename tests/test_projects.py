@@ -28,7 +28,7 @@ def test_non_member_cannot_read_project(
     resp = client.post("/projects", json={"name": "Beta"}, headers=owner_headers)
     project_id = resp.json()["id"]
 
-    resp = client.get(f"/project/{project_id}/info", headers=other_headers)
+    resp = client.get(f"/projects/{project_id}/info", headers=other_headers)
     assert resp.status_code == 403
 
 
@@ -39,10 +39,10 @@ def test_only_owner_can_delete(
     resp = client.post("/projects", json={"name": "Gamma"}, headers=owner_headers)
     project_id = resp.json()["id"]
 
-    resp = client.delete(f"/project/{project_id}", headers=owner_headers)
+    resp = client.delete(f"/projects/{project_id}", headers=owner_headers)
     assert resp.status_code == 204
 
-    resp = client.get(f"/project/{project_id}/info", headers=owner_headers)
+    resp = client.get(f"/projects/{project_id}/info", headers=owner_headers)
     assert resp.status_code == 404
 
 
@@ -54,7 +54,7 @@ def test_update_project_info(
     project_id = resp.json()["id"]
 
     resp = client.put(
-        f"/project/{project_id}/info", json={"description": "updated"}, headers=headers
+        f"/projects/{project_id}/info", json={"description": "updated"}, headers=headers
     )
     assert resp.status_code == 200
     assert resp.json()["description"] == "updated"

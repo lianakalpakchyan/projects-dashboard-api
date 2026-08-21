@@ -13,11 +13,11 @@ def test_owner_can_invite_existing_user(
     project_id = resp.json()["id"]
 
     # Invite user
-    resp = client.post(f"/project/{project_id}/invite?user=inv_participant", headers=owner_headers)
+    resp = client.post(f"/projects/{project_id}/invite?user=inv_participant", headers=owner_headers)
     assert resp.status_code == 204
 
     # Verify participant can access project
-    resp = client.get(f"/project/{project_id}/info", headers=participant_headers)
+    resp = client.get(f"/projects/{project_id}/info", headers=participant_headers)
     assert resp.status_code == 200
 
 
@@ -31,7 +31,9 @@ def test_share_token_flow(
     project_id = resp.json()["id"]
 
     # Create share link via aliased GET query
-    resp = client.get(f"/project/{project_id}/share?with=joiner@example.com", headers=owner_headers)
+    resp = client.get(
+        f"/projects/{project_id}/share?with=joiner@example.com", headers=owner_headers
+    )
     assert resp.status_code == 200
     join_link = resp.json()["join_link"]
     token = join_link.split("token=")[1]
@@ -42,5 +44,5 @@ def test_share_token_flow(
     assert resp.json()["id"] == project_id
 
     # Verify joined user has access
-    resp = client.get(f"/project/{project_id}/info", headers=joiner_headers)
+    resp = client.get(f"/projects/{project_id}/info", headers=joiner_headers)
     assert resp.status_code == 200

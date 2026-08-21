@@ -2,8 +2,6 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.enums import DatabaseMode
-
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -13,7 +11,6 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "lambda-dummy-secret-key"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60
-    DATABASE_MODE: DatabaseMode = DatabaseMode.ORM
 
     # Logging
     LOG_FILE: str = "logs/app.log"

@@ -4,10 +4,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import Document
-from app.repositories.interfaces import DocumentRepositoryInterface
 
 
-class DocumentRepository(DocumentRepositoryInterface[Document]):
+class DocumentRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
