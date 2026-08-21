@@ -18,39 +18,39 @@ def test_upload_list_download_delete_document(
 
     file_content = b"%PDF-1.4 fake pdf content"
     resp = client.post(
-        f"/project/{project_id}/documents",
+        f"/projects/{project_id}/documents",
         headers=headers,
         files={"files": ("report.pdf", io.BytesIO(file_content), "application/pdf")},
     )
     assert resp.status_code == 201
     document_id = resp.json()[0]["id"]
 
-    resp = client.get(f"/project/{project_id}/documents", headers=headers)
+    resp = client.get(f"/projects/{project_id}/documents", headers=headers)
     assert resp.status_code == 200
     assert len(resp.json()) == 1
 
-    resp = client.get(f"/document/{document_id}", headers=headers)
+    resp = client.get(f"/documents/{document_id}", headers=headers)
     assert resp.status_code == 200
     assert resp.content == file_content
 
-    # Validate physical update endpoint (PUT /document/)
+    # Validate physical update endpoint (PUT /documents/)
     replacement_content = b"%PDF-1.4 replacement pdf payload"
     resp = client.put(
-        f"/document/{document_id}",
+        f"/documents/{document_id}",
         headers=headers,
         files={"file": ("updated_report.pdf", io.BytesIO(replacement_content), "application/pdf")},
     )
     assert resp.status_code == 200
     assert resp.json()["filename"] == "updated_report.pdf"
 
-    resp = client.get(f"/document/{document_id}", headers=headers)
+    resp = client.get(f"/documents/{document_id}", headers=headers)
     assert resp.status_code == 200
     assert resp.content == replacement_content
 
-    resp = client.delete(f"/document/{document_id}", headers=headers)
+    resp = client.delete(f"/documents/{document_id}", headers=headers)
     assert resp.status_code == 204
 
-    resp = client.get(f"/project/{project_id}/documents", headers=headers)
+    resp = client.get(f"/projects/{project_id}/documents", headers=headers)
     assert resp.json() == []
 
 
@@ -63,7 +63,7 @@ def test_upload_accepts_supported_images(
     # Verify that PNG images are successfully uploaded
     image_content = b"\x89PNG\r\n\x1a\nfake-png-headers"
     resp = client.post(
-        f"/project/{project_id}/documents",
+        f"/projects/{project_id}/documents",
         headers=headers,
         files={"files": ("avatar.png", io.BytesIO(image_content), "image/png")},
     )
@@ -79,7 +79,7 @@ def test_upload_rejects_unsupported_type(
 
     # Verify that genuinely unsupported types like plain text are rejected
     resp = client.post(
-        f"/project/{project_id}/documents",
+        f"/projects/{project_id}/documents",
         headers=headers,
         files={"files": ("notes.txt", io.BytesIO(b"fake text file"), "text/plain")},
     )

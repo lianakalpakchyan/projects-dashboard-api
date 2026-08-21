@@ -1,6 +1,5 @@
 import logging
 import uuid
-from typing import Any, cast
 
 from fastapi import UploadFile
 
@@ -10,67 +9,110 @@ from app.exceptions import (
     StorageLimitExceededError,
     UnsupportedFileTypeError,
 )
-from app.repositories import DocumentRepositoryInterface
+from app.models import Document
+from app.repositories import DocumentRepository
 from app.services.project_service import ProjectService
 
 logger = logging.getLogger(__name__)
 
 
 class DocumentService:
-    def __init__(
-        self, doc_repo: DocumentRepositoryInterface, project_service: ProjectService
-    ) -> None:
+    def __init__(self, doc_repo: DocumentRepository, project_service: ProjectService) -> None:
         self.documents = doc_repo
         self.projects = project_service
         self.s3 = get_s3_client()
 
-    def list_for_project(self, user_id: uuid.UUID, project_id: uuid.UUID) -> list[Any]:
+    def list_for_project(self, user_id: uuid.UUID, project_id: uuid.UUID) -> list[Document]:
         self.projects.get_if_authorized(user_id, project_id)
         return self.documents.list_for_project(project_id)
 
     def upload(
         self, user_id: uuid.UUID, project_id: uuid.UUID, files: list[UploadFile]
-    ) -> list[Any]:
-        """
-        All-or-nothing batch upload.
-
-        We read every file and validate content-type + total size *before*
-        writing anything to S3 or the DB. That way a batch either fully
-        succeeds or fails cleanly with nothing persisted.
-
-        If something still goes wrong mid-write (S3 error, DB error), we
-        best-effort roll back any S3 objects already written in this batch
-        before re-raising.
-        """
+    ) -> list[Document]:
         self.projects.get_if_authorized(user_id, project_id)
 
-        # --- Phase 1: read + validate everything up front, write nothing yet ---
-        staged: list[tuple[str, bytes, str]] = []  # (filename, body, content_type)
-        total_new_size = 0
+        staged = self._stage_files(files)
+        total_new_size = sum(len(body) for _, _, body in staged)  # fixed unpacking order
+        self._check_storage_limit(project_id, total_new_size)
 
-        for file in files:
-            content_type = file.content_type or "application/octet-stream"
-            filename = file.filename or "unnamed"
+        return self._write_batch(project_id, staged)
 
-            if content_type not in ALLOWED_CONTENT_TYPES:
-                raise UnsupportedFileTypeError(
-                    f"Unsupported content type: {content_type} for file '{filename}'"
-                )
+    def update(self, user_id: uuid.UUID, document_id: uuid.UUID, file: UploadFile) -> Document:
+        doc = self._get_doc_or_404(document_id)
+        project_id, size_bytes, s3_key = self._extract_doc_fields(doc)
 
-            body = file.file.read()
-            staged.append((filename, body, content_type))
-            total_new_size += len(body)
+        self.projects.get_if_authorized(user_id, project_id)
 
+        filename, content_type, body = self._validate_and_read(file)
+        size = len(body)
+
+        self._check_storage_limit(project_id, size, existing_size=size_bytes)
+
+        self._delete_original_and_resized(s3_key)
+        new_key = f"projects/{project_id}/{uuid.uuid4()}-{filename}"
+        self.s3.put_object(
+            Bucket=settings.S3_BUCKET_NAME, Key=new_key, Body=body, ContentType=content_type
+        )
+
+        return self._persist_update(doc, filename, content_type, new_key, size)
+
+    def get_download_stream(
+        self, user_id: uuid.UUID, document_id: uuid.UUID
+    ) -> tuple[Document, bytes]:
+        doc = self._get_doc_or_404(document_id)
+        project_id, _, s3_key = self._extract_doc_fields(doc)
+
+        self.projects.get_if_authorized(user_id, project_id)
+        obj = self.s3.get_object(Bucket=settings.S3_BUCKET_NAME, Key=s3_key)
+        return doc, obj["Body"].read()
+
+    def delete(self, user_id: uuid.UUID, document_id: uuid.UUID) -> None:
+        doc = self._get_doc_or_404(document_id)
+        project_id, _, s3_key = self._extract_doc_fields(doc)
+
+        self.projects.get_if_authorized(user_id, project_id)
+        self._delete_original_and_resized(s3_key)
+        self.documents.delete(doc)
+
+    def _get_doc_or_404(self, document_id: uuid.UUID) -> Document:
+        doc = self.documents.get(document_id)
+        if doc is None:
+            raise NotFoundError("document not found")
+        return doc
+
+    @staticmethod
+    def _extract_doc_fields(doc: Document) -> tuple[uuid.UUID, int, str]:
+        return doc.project_id, doc.size_bytes, doc.s3_key
+
+    @staticmethod
+    def _validate_and_read(file: UploadFile) -> tuple[str, str, bytes]:
+        content_type = file.content_type or "application/octet-stream"
+        filename = file.filename or "unnamed"
+
+        if content_type not in ALLOWED_CONTENT_TYPES:
+            raise UnsupportedFileTypeError(f"unsupported content type: {content_type}")
+
+        body = file.file.read()
+        return filename, content_type, body
+
+    def _check_storage_limit(
+        self, project_id: uuid.UUID, incoming_size: int, existing_size: int = 0
+    ) -> None:
         current_total = self.documents.total_size_for_project(project_id)
         limit_bytes = settings.MAX_PROJECT_STORAGE_MB * 1024 * 1024
-        if current_total + total_new_size > limit_bytes:
-            raise StorageLimitExceededError("Project storage limit exceeded.")
+        if current_total - existing_size + incoming_size > limit_bytes:
+            raise StorageLimitExceededError("project storage limit exceeded.")
 
-        # --- Phase 2: everything validated, now actually write it ---
+    def _stage_files(self, files: list[UploadFile]) -> list[tuple[str, str, bytes]]:
+        return [self._validate_and_read(file) for file in files]
+
+    def _write_batch(
+        self, project_id: uuid.UUID, staged: list[tuple[str, str, bytes]]
+    ) -> list[Document]:
         written_keys: list[str] = []
-        results: list[Any] = []
+        results: list[Document] = []
         try:
-            for filename, body, content_type in staged:
+            for filename, content_type, body in staged:
                 key = f"projects/{project_id}/{uuid.uuid4()}-{filename}"
                 self.s3.put_object(
                     Bucket=settings.S3_BUCKET_NAME,
@@ -88,113 +130,47 @@ class DocumentService:
                 project_id,
                 len(written_keys),
             )
-            for key in written_keys:
-                try:
-                    self.s3.delete_object(Bucket=settings.S3_BUCKET_NAME, Key=key)
-                except Exception:
-                    logger.exception("Failed to roll back S3 object %s", key)
+            self._rollback_s3_objects(written_keys)
             raise
 
         return results
 
-    def update(self, user_id: uuid.UUID, document_id: uuid.UUID, file: UploadFile) -> Any:
-        doc = self.documents.get(document_id)
-        if doc is None:
-            raise NotFoundError("document not found")
+    def _rollback_s3_objects(self, keys: list[str]) -> None:
+        for key in keys:
+            try:
+                self.s3.delete_object(Bucket=settings.S3_BUCKET_NAME, Key=key)
+            except Exception:
+                logger.exception("Failed to roll back S3 object %s", key)
 
-        if isinstance(doc, dict):
-            project_id = doc["project_id"]
-            size_bytes = doc["size_bytes"]
-            s3_key = doc["s3_key"]
-        else:
-            project_id = doc.project_id
-            size_bytes = doc.size_bytes
-            s3_key = doc.s3_key
+    @staticmethod
+    def _resized_key(original_key: str) -> str:
+        prefix = "projects/"
+        if not original_key.startswith(prefix):
+            return original_key
 
-        self.projects.get_if_authorized(user_id, project_id)
+        return "projects-resized/" + original_key[len(prefix) :]
 
-        content_type = file.content_type or "application/octet-stream"
-        filename = file.filename or "unnamed"
-
-        if content_type not in ALLOWED_CONTENT_TYPES:
-            raise UnsupportedFileTypeError(f"Unsupported content type: {content_type}")
-
-        body = file.file.read()
-        size = len(body)
-
-        current_total = self.documents.total_size_for_project(project_id)
-        limit_bytes = settings.MAX_PROJECT_STORAGE_MB * 1024 * 1024
-        if current_total - size_bytes + size > limit_bytes:
-            raise StorageLimitExceededError("Project storage limit exceeded.")
-
+    def _delete_original_and_resized(self, s3_key: str) -> None:
         self.s3.delete_object(Bucket=settings.S3_BUCKET_NAME, Key=s3_key)
-        new_key = f"projects/{project_id}/{uuid.uuid4()}-{filename}"
-        self.s3.put_object(
-            Bucket=settings.S3_BUCKET_NAME, Key=new_key, Body=body, ContentType=content_type
-        )
 
-        if not isinstance(doc, dict):
-            doc.filename = filename
-            doc.content_type = content_type
-            doc.s3_key = new_key
-            doc.size_bytes = size
-            orm_repo = cast(Any, self.documents)
-            orm_repo.db.commit()
-            return doc
-        else:
-            raw_repo = cast(Any, self.documents)
-            with raw_repo.conn.cursor() as cur:
-                cur.execute(
-                    "UPDATE documents SET filename = %s, content_type = %s, "
-                    "s3_key = %s, size_bytes = %s "
-                    "WHERE id = %s RETURNING id, filename, content_type, "
-                    "size_bytes, uploaded_at",
-                    (
-                        filename,
-                        content_type,
-                        new_key,
-                        size,
-                        str(document_id),
-                    ),
-                )
-                row = cur.fetchone()
-                raw_repo.conn.commit()
-                return {
-                    "id": uuid.UUID(row[0]),
-                    "filename": row[1],
-                    "content_type": row[2],
-                    "size_bytes": row[3],
-                    "uploaded_at": row[4],
-                }
+        resized_key = self._resized_key(s3_key)
+        if resized_key != s3_key:
+            try:
+                self.s3.delete_object(Bucket=settings.S3_BUCKET_NAME, Key=resized_key)
+            except Exception:
+                logger.exception("Failed to delete resized S3 object %s", resized_key)
 
-    def get_download_stream(self, user_id: uuid.UUID, document_id: uuid.UUID) -> tuple[Any, bytes]:
-        doc = self.documents.get(document_id)
-        if doc is None:
-            raise NotFoundError("document not found")
-
-        if isinstance(doc, dict):
-            project_id = doc["project_id"]
-            s3_key = doc["s3_key"]
-        else:
-            project_id = doc.project_id
-            s3_key = doc.s3_key
-
-        self.projects.get_if_authorized(user_id, project_id)
-        obj = self.s3.get_object(Bucket=settings.S3_BUCKET_NAME, Key=s3_key)
-        return doc, obj["Body"].read()
-
-    def delete(self, user_id: uuid.UUID, document_id: uuid.UUID) -> None:
-        doc = self.documents.get(document_id)
-        if doc is None:
-            raise NotFoundError("document not found")
-
-        if isinstance(doc, dict):
-            project_id = doc["project_id"]
-            s3_key = doc["s3_key"]
-        else:
-            project_id = doc.project_id
-            s3_key = doc.s3_key
-
-        self.projects.get_if_authorized(user_id, project_id)
-        self.s3.delete_object(Bucket=settings.S3_BUCKET_NAME, Key=s3_key)
-        self.documents.delete(doc)
+    def _persist_update(
+        self,
+        doc: Document,
+        filename: str,
+        content_type: str,
+        new_key: str,
+        size: int,
+    ) -> Document:
+        doc.filename = filename
+        doc.content_type = content_type
+        doc.s3_key = new_key
+        doc.size_bytes = size
+        self.documents.db.commit()
+        return doc

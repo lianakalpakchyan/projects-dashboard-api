@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.api.deps import get_auth_service
 from app.exceptions import InvalidCredentialsError, UserAlreadyExistsError
 from app.schemas import Token, UserCreate, UserLogin, UserOut
-from app.services.auth_service import AuthService
+from app.services import AuthService
 
 router = APIRouter(tags=["auth"])
 

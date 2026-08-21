@@ -32,7 +32,7 @@ def list_projects(
     return [ProjectFullInfo.model_validate(p) for p in projects]
 
 
-@router.get("/project/{project_id}/info", response_model=ProjectInfo)
+@router.get("/projects/{project_id}/info", response_model=ProjectInfo)
 def get_project_info(
     project_id: uuid.UUID, current_user: CurrentUserDep, service: ProjectServiceDep
 ) -> ProjectInfo:
@@ -46,7 +46,7 @@ def get_project_info(
     return ProjectInfo.model_validate(project)
 
 
-@router.put("/project/{project_id}/info", response_model=ProjectInfo)
+@router.put("/projects/{project_id}/info", response_model=ProjectInfo)
 def update_project_info(
     project_id: uuid.UUID,
     payload: ProjectUpdate,
@@ -63,7 +63,7 @@ def update_project_info(
     return ProjectInfo.model_validate(project)
 
 
-@router.delete("/project/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_project(
     project_id: uuid.UUID, current_user: CurrentUserDep, service: ProjectServiceDep
 ) -> None:
@@ -76,7 +76,7 @@ def delete_project(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
 
-@router.post("/project/{project_id}/invite", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/projects/{project_id}/invite", status_code=status.HTTP_204_NO_CONTENT)
 def invite_user(
     project_id: uuid.UUID,
     user: str,
@@ -92,7 +92,7 @@ def invite_user(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
 
-@router.get("/project/{project_id}/share", status_code=status.HTTP_200_OK)
+@router.get("/projects/{project_id}/share", status_code=status.HTTP_200_OK)
 def share_project(
     project_id: uuid.UUID,
     email: Annotated[str, Query(alias="with", description="Target invitee email address")],

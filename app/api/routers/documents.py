@@ -21,7 +21,7 @@ DocServiceDep = Annotated[DocumentService, Depends(get_document_service)]
 CurrentUserDep = Annotated[Any, Depends(get_current_user)]
 
 
-@router.get("/project/{project_id}/documents", response_model=list[DocumentOut])
+@router.get("/projects/{project_id}/documents", response_model=list[DocumentOut])
 def list_documents(
     project_id: uuid.UUID, current_user: CurrentUserDep, service: DocServiceDep
 ) -> list[DocumentOut]:
@@ -36,7 +36,7 @@ def list_documents(
 
 
 @router.post(
-    "/project/{project_id}/documents",
+    "/projects/{project_id}/documents",
     response_model=list[DocumentOut],
     status_code=status.HTTP_201_CREATED,
 )
@@ -63,7 +63,7 @@ def upload_documents(
     return [DocumentOut.model_validate(d) for d in results]
 
 
-@router.put("/document/{document_id}", response_model=DocumentOut)
+@router.put("/documents/{document_id}", response_model=DocumentOut)
 def update_document(
     document_id: uuid.UUID,
     file: Annotated[UploadFile, File(...)],
@@ -86,7 +86,7 @@ def update_document(
     return DocumentOut.model_validate(updated)
 
 
-@router.get("/document/{document_id}")
+@router.get("/documents/{document_id}")
 def download_document(
     document_id: uuid.UUID, current_user: CurrentUserDep, service: DocServiceDep
 ) -> Response:
@@ -112,7 +112,7 @@ def download_document(
     )
 
 
-@router.delete("/document/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_document(
     document_id: uuid.UUID, current_user: CurrentUserDep, service: DocServiceDep
 ) -> None:

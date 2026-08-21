@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError, NoCredentialsError
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from app.api.routers import auth, documents, projects
+from app.api import auth, documents, projects
 from app.core.deployer import deploy_aws_infrastructure
 
 logger = logging.getLogger(__name__)

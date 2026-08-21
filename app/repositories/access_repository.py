@@ -3,11 +3,11 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import ProjectAccess, Role
-from app.repositories.interfaces import AccessRepositoryInterface
+from app.enums import Role
+from app.models import ProjectAccess
 
 
-class AccessRepository(AccessRepositoryInterface[ProjectAccess]):
+class AccessRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
